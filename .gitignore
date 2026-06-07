@@ -1,0 +1,26 @@
+# 建置產物 (CMake)
+/build/
+build*/
+godot_zone/bin/
+
+# 編譯中間檔 / 二進位
+*.o
+*.a
+*.so
+*.dylib
+*.dll
+*.lib
+*.obj
+*.pdb
+
+# Godot
+.godot/
+*.gd.uid
+*.gdextension.uid
+
+# 存檔目錄 (user://)
+user:/
+
+# OS
+.DS_Store
+Thumbs.db
