@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<script>document.documentElement.className="js";</script>
+<title>怎麼看程式 — gamecore-zone</title>
+<meta name="description" content="gamecore-zone 程式碼結構導覽：三層架構、檔案地圖、真相層在哪。">
+<link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+
+<header class="topbar">
+  <div class="topbar-inner">
+    <div class="brand"><span class="dot"></span>gamecore<b>·</b>zone</div>
+    <nav class="nav">
+      <a href="index.html">總覽</a>
+      <a href="architecture.html" class="active">怎麼看程式</a>
+      <a href="mechanics.html">機制詳解</a>
+      <a href="testing.html">測試與驗證</a>
+    </nav>
+    <button class="menu-btn">☰</button>
+  </div>
+</header>
+
+<main class="wrap">
+
+  <div class="page-head">
+    <p class="eyebrow">怎麼看程式</p>
+    <h2>不會迷路的閱讀順序</h2>
+    <p class="lead">
+      這頁告訴你：整體架構長怎樣、每個資料夾負責什麼、<strong>哪幾個檔案才是「真相層」</strong>，
+      以及如果你只有五分鐘該打開哪三個檔案。
+    </p>
+  </div>
+
+  <!-- 三層架構 -->
+  <section>
+    <p class="eyebrow">大圖</p>
+    <h2>它在整個 gamecore 的哪一層</h2>
+    <p>gamecore 規畫成三層，由大到小。<strong>這個 repo 只做最底層——區域層（Area Layer）</strong>，也就是「你實際站在一張地圖上戰鬥」的那一層。</p>
+
+    <div class="term reveal" style="margin-top:20px;">
+      <div class="term-bar"><span class="lights"><i class="l-r"></i><i class="l-y"></i><i class="l-g"></i></span> gamecore 三層架構</div>
+<div class="term-body">  <span class="hl">World  Layer</span>  世界／全域時間、大地圖
+        │
+  <span class="hl">Region Layer</span>  區域群、跨地圖移動
+        │
+  <span class="at">Area   Layer</span>  ◀── <span class="at">本 repo（gamecore-zone）</span>
+                一張地圖 · ECS · FOV · 回合排程 · 戰鬥</div>
+    </div>
+
+    <div class="note">
+      <b class="t">出身</b>
+      本層是從 <code>opennefia-cpp</code> <strong>hard fork</strong> 出來的：保留了成熟的 ECS／FOV／戰鬥骨架，
+      但把 OpenNefia 特有的機制（事件匯流排、原型管理器、spawn 系統）整套拿掉，換上自己的回合排程與效果系統。
+    </div>
+  </section>
+
+  <!-- 檔案地圖 -->
+  <section>
+    <p class="eyebrow">檔案地圖</p>
+    <h2>每個資料夾在幹嘛</h2>
+    <p>整個專案被 git 追蹤的檔案不多（約 80 個），心智負擔低。重點集中在 <code>src/core/turn/</code>。</p>
+
+    <div class="tree reveal">
+<span class="d">MednGameCore/</span>
+├─ <span class="d">src/core/</span>                  <span class="cmt"># 純 C++ 核心，不依賴 Godot，可單獨 ctest</span>
+│  ├─ <span class="hot">turn/</span>                  <span class="cmt"># ★ 心臟：回合排程 + Action + 效果</span>
+│  │  ├─ <span class="f">turn_scheduler.h</span>      <span class="cmt"># 排程器介面 advance()/step()</span>
+│  │  ├─ <span class="f">energy_instant_*</span>      <span class="cmt"># A 排程器：能量瞬發</span>
+│  │  ├─ <span class="f">energy_channel_*</span>      <span class="cmt"># B 排程器：能量 + 可打斷詠唱（最完整）</span>
+│  │  ├─ <span class="f">tick_remaining_*</span>      <span class="cmt"># C 排程器：純 tick，跳到下一結算</span>
+│  │  ├─ <span class="f">make_scheduler.cpp</span>    <span class="cmt"># 依 mode 產生 A/B/C</span>
+│  │  ├─ <span class="f">action.h / action_def.*</span> <span class="cmt"># 指令值型別 + JSON 可組合原語</span>
+│  │  ├─ <span class="f">action_effects.h</span>      <span class="cmt"># on_channel / on_resolve 介面</span>
+│  │  ├─ <span class="f">zone_effects.*</span>        <span class="cmt"># 移動/撞牆/攻擊/拾取/nova 實作</span>
+│  │  ├─ <span class="f">timed_effect.h</span>        <span class="cmt"># DoT：燃燒/中毒/回復</span>
+│  │  ├─ <span class="f">npc_brain.*</span>           <span class="cmt"># NPC 追擊 + 施法決策</span>
+│  │  └─ <span class="f">turn_world.h</span>          <span class="cmt"># 排程器看到的世界視圖 + trace sink</span>
+│  ├─ <span class="d">systems/</span>               <span class="cmt"># fov_system / npc_ai_system</span>
+│  └─ <span class="d">serialize/</span>             <span class="cmt"># cereal 存讀檔（save_store / save_load）</span>
+├─ <span class="d">src/gbind/</span>                <span class="cmt"># GDExtension 綁定層（C++ ↔ Godot）</span>
+│  ├─ <span class="f">zone_world_gd.*</span>         <span class="cmt"># ZoneWorld：submit_hero_* / step / get_debug_text</span>
+│  └─ <span class="f">register_types.cpp</span>     <span class="cmt"># 對 Godot 註冊類別</span>
+├─ <span class="d">godot_zone/</span>               <span class="cmt"># Godot 專案（GDScript 前端）</span>
+│  ├─ <span class="hot">map_view.gd</span>            <span class="cmt"># ★ 前端主控：輸入 → submit、Timer 推進、畫面</span>
+│  ├─ <span class="f">map_view.tscn</span>          <span class="cmt"># 主場景</span>
+│  └─ <span class="f">verify.gd</span>             <span class="cmt"># headless 驗證腳本</span>
+├─ <span class="d">data/</span>
+│  └─ <span class="hot">actions.json</span>           <span class="cmt"># ★ 技能資料：火球/治療/隕石/劇毒…</span>
+├─ <span class="d">tests/src/</span>               <span class="cmt"># doctest 單元測試（49 案）</span>
+├─ <span class="d">docs/superpowers/</span>        <span class="cmt"># 設計文件 + 實作計畫（真相層）</span>
+└─ <span class="f">session_log.md</span>          <span class="cmt"># 逐步開發日誌（想知道為什麼這樣做就讀它）</span>
+    </div>
+  </section>
+
+  <!-- 真相層 -->
+  <section>
+    <p class="eyebrow">真相層</p>
+    <h2>哪些檔案是「設計的權威來源」</h2>
+    <p>程式碼會變，但設計意圖寫在文件裡。要理解「為什麼這樣設計」，這四份是權威：</p>
+
+    <table class="tbl reveal">
+      <thead><tr><th>檔案</th><th>它回答什麼問題</th></tr></thead>
+      <tbody>
+        <tr><td>session_log.md</td><td>逐步做了什麼、每個決策的理由、踩過哪些坑（最快的上手入口）</td></tr>
+        <tr><td>…specs/2026-06-07-action-and-turn-scheduler-design.md</td><td>Action 型別、三排程器 advance() 怎麼算、測試情境 §8</td></tr>
+        <tr><td>…specs/2026-06-03-gamecore-zone-design.md §7</td><td>回合迴圈、對稱 actor 模型、Godot↔C++ 介面</td></tr>
+        <tr><td>…plans/2026-06-07-…scheduler.md</td><td>排程器這塊的實作計畫（13 tasks 拆解）</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <!-- 資料流 -->
+  <section>
+    <p class="eyebrow">資料怎麼流</p>
+    <h2>一次玩家輸入發生了什麼</h2>
+    <p>前端永遠不直接改世界，只「提交指令」與「推進時間」，規則全在 C++。</p>
+
+    <div class="term reveal">
+      <div class="term-bar"><span class="lights"><i class="l-r"></i><i class="l-y"></i><i class="l-g"></i></span> 一次「按 D 往右走」的資料流</div>
+<div class="term-body"><span class="hl">[GDScript] map_view.gd</span>
+   按下 D
+      │  world.submit_hero_move(1, 0)        <span class="wl"># 只登記指令，不馬上動</span>
+      ▼
+<span class="hl">[GDExtension] zone_world_gd.cpp</span>
+   把指令塞進英雄的 OngoingAction
+      │  Timer 每 0.2s → world.step_scheduler()
+      ▼
+<span class="hl">[C++ core] energy_channel_scheduler.cpp</span>
+   發能量 → 輪到英雄 → on_resolve
+      │  zone_effects: resolve_move(1,0)
+      ▼
+   撞牆？攻擊？拾取？ → 發 ZoneEvent + trace
+      │  推進到「英雄再次等指令」才停
+      ▼
+<span class="hl">[GDScript]</span> drain_events → 重畫地圖 + 更新 debug 面板</div>
+    </div>
+
+    <div class="note warn">
+      <b class="t">關鍵設計</b>
+      C++ <strong>擁有規則、擁有時間</strong>；Godot 只負責「畫面 + 輸入 + 計時器」。
+      三條時鐘是分開的：<code>render_frame</code>（畫）、<code>on_input</code>（提交）、<code>advance_tick</code>（推進）。
+      世界阻塞的定義 = 英雄 idle 且沒指令，此時 C++ 不空轉，靜靜等你下一步。
+    </div>
+  </section>
+
+  <!-- 五分鐘 -->
+  <section style="border-bottom:0;">
+    <p class="eyebrow">只有五分鐘</p>
+    <h2>那就打開這三個檔</h2>
+    <div class="grid c3">
+      <div class="card fire reveal">
+        <span class="k">1</span>
+        <div class="ico">🪵</div>
+        <h3>session_log.md</h3>
+        <p>從頭讀到尾。它就是這條分支的故事，每段都對應一次真實提交。</p>
+      </div>
+      <div class="card cyan reveal">
+        <span class="k">2</span>
+        <div class="ico">⟳</div>
+        <h3>energy_channel_scheduler.cpp</h3>
+        <p>三排程器中最完整的一個。看懂它，能量＋詠唱＋打斷的模型就通了。</p>
+      </div>
+      <div class="card heal reveal">
+        <span class="k">3</span>
+        <div class="ico">🎮</div>
+        <h3>godot_zone/map_view.gd</h3>
+        <p>前端如何把鍵盤變成 submit、如何用 Timer 推進、畫面怎麼來。對照著玩最有感。</p>
+      </div>
+    </div>
+    <div class="hero-cta" style="margin-top:30px;">
+      <a class="btn primary" href="mechanics.html">▶ 接著看：機制怎麼運作</a>
+      <a class="btn" href="testing.html">直接跑起來 →</a>
+    </div>
+  </section>
+
+</main>
+
+<footer>
+  <div class="wrap foot-inner">
+    <span>gamecore-zone · Area Layer · 區域層原型</span>
+    <span><a href="index.html">← 回總覽</a></span>
+  </div>
+</footer>
+
+<script src="assets/app.js"></script>
+</body>
+</html>

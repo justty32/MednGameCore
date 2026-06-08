@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<script>document.documentElement.className="js";</script>
+<title>測試與驗證 — gamecore-zone</title>
+<meta name="description" content="怎麼 build、跑 ctest、headless 驗證、實機操作 gamecore-zone，含按鍵對照表。">
+<link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+
+<header class="topbar">
+  <div class="topbar-inner">
+    <div class="brand"><span class="dot"></span>gamecore<b>·</b>zone</div>
+    <nav class="nav">
+      <a href="index.html">總覽</a>
+      <a href="architecture.html">怎麼看程式</a>
+      <a href="mechanics.html">機制詳解</a>
+      <a href="testing.html" class="active">測試與驗證</a>
+    </nav>
+    <button class="menu-btn">☰</button>
+  </div>
+</header>
+
+<main class="wrap">
+
+  <div class="page-head">
+    <p class="eyebrow">測試與驗證</p>
+    <h2>怎麼確認它真的能跑</h2>
+    <p class="lead">
+      三層驗證，由快到慢、由純到實：<strong>① 單元測試</strong>（純 C++，最快）→
+      <strong>② headless 端到端</strong>（Godot 不開視窗）→ <strong>③ 實機操作</strong>（開視窗自己玩）。
+      指令框可點擊複製。
+    </p>
+  </div>
+
+  <!-- 先決 -->
+  <section>
+    <p class="eyebrow">先決條件</p>
+    <h2>你需要什麼</h2>
+    <div class="grid c3">
+      <div class="card cyan reveal"><div class="ico">⚙</div><h3>CMake ≥ 3.14</h3><p>＋ 支援 C++20 的編譯器。相依套件（EnTT／cereal／doctest）由 FetchContent 自動抓。</p></div>
+      <div class="card fire reveal"><div class="ico">🎮</div><h3>Godot 4.6（mono）</h3><p>僅 ② ③ 需要。GDExtension 相容版本 ≥ 4.4。</p></div>
+      <div class="card heal reveal"><div class="ico">🌐</div><h3>網路（首次建置）</h3><p>第一次 cmake 會下載相依原始碼，之後就快取在 build/ 裡。</p></div>
+    </div>
+  </section>
+
+  <!-- ① 單元測試 -->
+  <section>
+    <p class="eyebrow">第一層 · 最快</p>
+    <h2>① 純 C++ 單元測試（ctest）</h2>
+    <p>不需要 Godot。這會驗證排程器、效果、DoT、技能載入、NPC 決策的核心邏輯。</p>
+
+    <div class="cmd-label">建置核心 + 測試</div>
+<pre data-copy><span class="c"># 在 repo 根目錄</span>
+<span class="p">$</span> cmake -B build
+<span class="p">$</span> cmake --build build -j</pre>
+
+    <div class="cmd-label">跑全部測試</div>
+<pre data-copy><span class="p">$</span> ctest --test-dir build --output-on-failure
+<span class="c"># 或直接執行測試二進位</span>
+<span class="p">$</span> ./build/bin/zone_test</pre>
+
+    <div class="note">
+      <b class="t">預期結果</b>
+      <strong><span style="color:var(--heal)">49 個測試案例 · 168 個斷言 · 全綠。</span></strong>
+      涵蓋速度差、channel 詠唱、打斷、玩家阻塞、多角色、移動/撞牆/攻擊/拾取、Cast nova、DoT 逐回合/致死、
+      JSON 載入/後備、NPC 追擊/施法/方向，以及序列化 round-trip。
+    </div>
+
+    <p>想針對單一機制，可用 doctest 的子集過濾，例如只跑排程器相關：</p>
+<pre data-copy><span class="p">$</span> ./build/bin/zone_test --test-case=<span class="v">"scheduler*"</span>
+<span class="p">$</span> ./build/bin/zone_test --test-case=<span class="v">"timed_effect*"</span>   <span class="c"># DoT</span>
+<span class="p">$</span> ./build/bin/zone_test --test-case=<span class="v">"action_def*"</span>     <span class="c"># JSON 技能</span></pre>
+  </section>
+
+  <!-- ② headless -->
+  <section>
+    <p class="eyebrow">第二層 · 端到端</p>
+    <h2>② Godot headless 驗證（不開視窗）</h2>
+    <p>這會真的載入原生擴充 <code>libzone_gd.so</code>，驗證 C++ ↔ Godot 整條接線：建世界、三模式提交指令、save/load round-trip。</p>
+
+    <div class="cmd-label">先帶 GDExtension 重新建置</div>
+<pre data-copy><span class="p">$</span> cmake -B build -D<span class="v">ZONE_BUILD_GDEXTENSION=ON</span>
+<span class="p">$</span> cmake --build build -j
+<span class="c"># 產物 libzone_gd.so 需放到 godot 專案的 bin/</span>
+<span class="p">$</span> cp build/bin/libzone_gd.so godot_zone/bin/</pre>
+
+    <div class="cmd-label">跑驗證腳本</div>
+<pre data-copy><span class="p">$</span> godot-mono --headless --path godot_zone -s res://verify.gd</pre>
+
+    <div class="note">
+      <b class="t">預期結果</b>
+      終端印出 <code>zone core version: 0.0.1-alpha</code>，依序驗證 <strong>三排程器 + cast + skill</strong>，
+      最後印 <strong><span style="color:var(--heal)">VERIFY PASSED</span></strong>。verify.gd 會 set_mode → submit → step 直到英雄真的動了才算過。
+    </div>
+
+    <div class="note bug">
+      <b class="t">這裡修過一個假通過</b>
+      早期 verify.gd 用 <code>while not waiting</code> 迴圈，但 submit 後英雄「仍在 waiting」，迴圈直接跳過——<strong>指令從沒被執行卻顯示通過</strong>。
+      改成 step-first 的 <code>_advance()</code> 後才真正驗到英雄移動。提醒：綠燈也要看它驗的是不是你以為的東西。
+    </div>
+  </section>
+
+  <!-- ③ 實機 -->
+  <section>
+    <p class="eyebrow">第三層 · 自己玩</p>
+    <h2>③ 開視窗實機操作</h2>
+    <p>主場景 <code>map_view.tscn</code>。畫面上有 ASCII 地圖 + 詳細 debug 面板（逐 actor 的 HP／能量／進行中動作／持續效果）+ trace log。</p>
+
+    <div class="cmd-label">啟動</div>
+<pre data-copy><span class="p">$</span> godot-mono --path godot_zone
+<span class="c"># 主場景就是 map_view.tscn，直接開始</span></pre>
+
+    <h3>操作對照表</h3>
+    <table class="tbl reveal">
+      <thead><tr><th>按鍵</th><th>動作</th><th>觀察什麼</th></tr></thead>
+      <tbody>
+        <tr><td><span class="kbd">W A S D</span> / 方向 / 小鍵盤</td><td>八方向移動（含斜走）</td><td>撞牆停住、撞到敵人＝攻擊</td></tr>
+        <tr><td><span class="kbd">.</span> / <span class="kbd">5</span></td><td>原地等待一回合</td><td>世界推進、看 NPC 逼近</td></tr>
+        <tr><td><span class="kbd">C</span></td><td>火球 fireball（詠唱 3 回合）</td><td>B 模式可看詠唱進度條、殘留燃燒</td></tr>
+        <tr><td><span class="kbd">H</span></td><td>治療 heal</td><td>瞬補 + Regen buff 逐回合回血</td></tr>
+        <tr><td><span class="kbd">M</span></td><td>隕石 meteor（大範圍 r2）</td><td>一次燒一片，面板多人燃燒</td></tr>
+        <tr><td><span class="kbd">V</span></td><td>劇毒 venom（中毒 5 回合）</td><td>毒系 DoT 與燃燒並存</td></tr>
+        <tr><td><span class="kbd">TAB</span></td><td>循環切換排程器 A → B → C</td><td>標題顯示當前模式，比較行為差異</td></tr>
+        <tr><td><span class="kbd">[</span> / <span class="kbd">]</span></td><td>調慢 / 調快推進步調</td><td>預設 0.2s/步，看清每一步</td></tr>
+        <tr><td><span class="kbd">L</span></td><td>開關 trace log 顯示</td><td>每件事發生當下吐成文字</td></tr>
+        <tr><td><span class="kbd">K</span></td><td>清空 trace log</td><td>—</td></tr>
+        <tr><td><span class="kbd">R</span></td><td>重開一局</td><td>—</td></tr>
+        <tr><td><span class="kbd">F5</span> / <span class="kbd">F9</span></td><td>存檔 / 讀檔</td><td>驗證序列化 round-trip</td></tr>
+      </tbody>
+    </table>
+
+    <h3>建議的驗證劇本</h3>
+    <div class="grid c2">
+      <div class="card cyan reveal"><div class="ico">A</div><h3>看速度差</h3><p>切到 <span class="kbd">A</span> 或 <span class="kbd">B</span>，原地 <span class="kbd">.</span> 等待，盯面板的 energy(spd) 欄——快角（spd130）比慢角（spd80）更常出手。</p></div>
+      <div class="card fire reveal"><div class="ico">B</div><h3>看詠唱與打斷</h3><p>切 <span class="kbd">B</span>，按 <span class="kbd">C</span> 開始火球（▸channel x/3），蓄力中按移動——舊動作不結算，當場被打斷。</p></div>
+      <div class="card heal reveal"><div class="ico">C</div><h3>看純 tick</h3><p>切 <span class="kbd">C</span>，比較「誰下一個動」是否比能量制更好預測。</p></div>
+      <div class="card blood reveal"><div class="ico">☠</div><h3>看 DoT 致死</h3><p>放火球/隕石點燃 NPC，按 <span class="kbd">.</span> 等待，看燃燒每回合扣血直到歸零發出死亡。</p></div>
+    </div>
+  </section>
+
+  <!-- 摘要 -->
+  <section style="border-bottom:0;">
+    <p class="eyebrow">一頁速查</p>
+    <h2>三層驗證一次看完</h2>
+    <table class="tbl reveal">
+      <thead><tr><th>層級</th><th>指令</th><th>通過長相</th></tr></thead>
+      <tbody>
+        <tr><td>① ctest</td><td><code>ctest --test-dir build</code></td><td>49 案 / 168 斷言全綠</td></tr>
+        <tr><td>② headless</td><td><code>godot-mono --headless -s res://verify.gd</code></td><td>VERIFY PASSED（3 模式 + cast + skill）</td></tr>
+        <tr><td>③ 實機</td><td><code>godot-mono --path godot_zone</code></td><td>能走、能放技能、TAB 換排程器有差</td></tr>
+      </tbody>
+    </table>
+    <div class="hero-cta" style="margin-top:30px;">
+      <a class="btn primary" href="index.html">↩ 回總覽</a>
+      <a class="btn" href="mechanics.html">← 機制詳解</a>
+    </div>
+  </section>
+
+</main>
+
+<footer>
+  <div class="wrap foot-inner">
+    <span>gamecore-zone · Area Layer · 區域層原型</span>
+    <span><a href="index.html">← 回總覽</a></span>
+  </div>
+</footer>
+
+<script src="assets/app.js"></script>
+</body>
+</html>

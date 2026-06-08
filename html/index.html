@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<script>document.documentElement.className="js";</script>
+<title>gamecore-zone — 專案導覽</title>
+<meta name="description" content="gamecore-zone：C++ 回合制遊戲核心。可切換回合排程器、效果/DoT/JSON 技能、NPC 追擊 AI，透過 GDExtension 接到 Godot。">
+<link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+
+<header class="topbar">
+  <div class="topbar-inner">
+    <div class="brand"><span class="dot"></span>gamecore<b>·</b>zone</div>
+    <nav class="nav">
+      <a href="index.html" class="active">總覽</a>
+      <a href="architecture.html">怎麼看程式</a>
+      <a href="mechanics.html">機制詳解</a>
+      <a href="testing.html">測試與驗證</a>
+    </nav>
+    <button class="menu-btn">☰</button>
+  </div>
+</header>
+
+<main class="wrap">
+
+  <!-- HERO -->
+  <section class="hero" style="border-bottom:0;">
+    <div>
+      <span class="tag">AREA LAYER · 0.0.1-alpha</span>
+      <h1>一顆會<span class="fire">跑回合</span>的<br>遊戲核心</h1>
+      <p class="lead">
+        <strong>gamecore-zone</strong> 是 gamecore 三層架構（World／Region／Area）的最底層——<b>區域層</b>。
+        它用 C++ 寫的 ECS 跑出一張地圖、一個英雄、一群會追你的 NPC，
+        並提供<strong>三種可即時切換的回合排程器</strong>，全部接到 Godot 前端可以實機操作。
+      </p>
+      <div class="hero-cta">
+        <a class="btn primary" href="testing.html">▶ 我要怎麼跑起來看</a>
+        <a class="btn" href="architecture.html">程式長怎樣 →</a>
+      </div>
+    </div>
+
+    <!-- ASCII 終端機示意 -->
+    <div class="term reveal">
+      <div class="term-bar">
+        <span class="lights"><i class="l-r"></i><i class="l-y"></i><i class="l-g"></i></span>
+        map_view.tscn — 排程器 [B] EnergyChannel
+      </div>
+<div class="term-body"><span class="wl">################################</span>
+<span class="wl">#</span>......<span class="en">g</span>.........<span class="it">!</span>.........<span class="wl">#</span>
+<span class="wl">#</span>...<span class="wl">####</span>....<span class="en">g</span>.......<span class="wl">###</span>...<span class="wl">#</span>
+<span class="wl">#</span>......<span class="at">@</span>...........<span class="en">g</span>......<span class="wl">#</span>
+<span class="wl">#</span>...........<span class="it">!</span>....<span class="wl">##</span>.........<span class="wl">#</span>
+<span class="wl">#</span>....<span class="en">g</span>...............<span class="en">g</span>....<span class="wl">#</span>
+<span class="wl">################################</span>
+
+<span class="hl">turn</span> 12  <span class="hl">clock</span> 480t  <span class="hl">floor</span> 1
+<span class="at">@</span> hero   hp 18/20  energy 130(spd130)
+<span class="en">g</span> #3a1f  hp  6/8   ▸channel npc_flame 2/3
+<span class="en">g</span> #3b04  hp  8/8   burning(2) ▱▱</div>
+    </div>
+  </section>
+
+  <!-- 一句話 -->
+  <section>
+    <p class="eyebrow">這是什麼</p>
+    <h2>把「時間怎麼流動」做成可以換的零件</h2>
+    <p class="lead">
+      大部分回合制遊戲把時間規則寫死。這個核心反過來：<strong>同一份遊戲世界，三套不同的時間模型隨按 <span class="kbd">TAB</span> 切換</strong>，
+      讓你能直接比較「能量瞬發」「能量＋詠唱」「純 tick」三種排程在同一場戰鬥下的差異。所有戰鬥效果、持續傷害、技能都是資料驅動的。
+    </p>
+
+    <div class="stats reveal">
+      <div class="stat"><div class="n">3</div><div class="l">可切換排程器</div></div>
+      <div class="stat"><div class="n">49</div><div class="l">ctest 測試案例</div></div>
+      <div class="stat"><div class="n">168</div><div class="l">斷言全綠</div></div>
+      <div class="stat"><div class="n">6</div><div class="l">JSON 技能</div></div>
+    </div>
+    <p style="font-family:var(--code);font-size:12.5px;color:var(--ink-faint);margin-top:10px;">
+      headless VERIFY PASSED（三模式 + 詠唱 + 技能）· Godot 4.6 mono · zone core 0.0.1-alpha · 60×40 地圖 · save/load round-trip 綠
+    </p>
+  </section>
+
+  <!-- 核心能力 -->
+  <section>
+    <p class="eyebrow">核心能力</p>
+    <h2>裡面有哪些系統</h2>
+    <div class="grid c3">
+      <div class="card cyan reveal">
+        <div class="ico">⟳</div>
+        <h3>三種回合排程器</h3>
+        <p>A 能量瞬發、B 能量＋可打斷詠唱（最完整）、C 純 tick。執行中按 TAB 即時切換比較。</p>
+      </div>
+      <div class="card fire reveal">
+        <div class="ico">✦</div>
+        <h3>資料化技能</h3>
+        <p>火球／治療／隕石／劇毒等技能寫在 <code>data/actions.json</code>，由可組合原語（位移／nova／DoT／自療）拼出。</p>
+      </div>
+      <div class="card cast reveal">
+        <div class="ico">☣</div>
+        <h3>持續效果 DoT</h3>
+        <p>燃燒、中毒、回復在每回合開始結算；致死會發 ActorDied 事件，nova 會對生還者殘留燃燒。</p>
+      </div>
+      <div class="card blood reveal">
+        <div class="ico">⚔</div>
+        <h3>NPC 追擊 AI</h3>
+        <p>NPC 朝英雄移動、相鄰即撞擊攻擊；半數是施法者，逼近就放 nova 技能圍殺。</p>
+      </div>
+      <div class="card heal reveal">
+        <div class="ico">◫</div>
+        <h3>診斷面板 + Trace</h3>
+        <p>逐 actor 傾印 HP／能量／進行中動作／所有持續效果；trace 管線把每件事發生當下吐成文字。</p>
+      </div>
+      <div class="card gold reveal">
+        <div class="ico">⇄</div>
+        <h3>GDExtension 接線</h3>
+        <p>C++ 核心編成原生擴充，GDScript 前端用 submit／step 驅動；存讀檔 round-trip 已驗證。</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- 做了什麼（時間軸） -->
+  <section>
+    <p class="eyebrow">做了什麼 · 開發歷程</p>
+    <h2>從 hard fork 到可玩 demo</h2>
+    <p class="lead">以下是這條分支實際走過的路。每一步都跟著測試綠燈與 headless 驗證前進。</p>
+
+    <div class="timeline">
+      <div class="tl reveal">
+        <div class="step">STEP 01 · 重構</div>
+        <h4>zone_core hard fork</h4>
+        <p>自 opennefia-cpp 砍出區域層，保留 ECS／FOV／戰鬥，移除 OpenNefia 特有機制（事件匯流排、原型管理器）。25→ctest 全綠。</p>
+      </div>
+      <div class="tl reveal">
+        <div class="step">STEP 02 · 接線</div>
+        <h4>GDExtension 建置通過</h4>
+        <p>zone_gd 編譯成原生擴充，Godot headless VERIFY PASSED：60×40 地圖、save/load round-trip 全綠。</p>
+      </div>
+      <div class="tl reveal">
+        <div class="step">STEP 03 · 設計</div>
+        <h4>回合迴圈 §7 + Action 模型定案</h4>
+        <p>收斂出對稱 actor 模型與 order 表；定案 Action＝enum＋param＋weight、時間用 ToME4 能量、效果走可替換 on_channel／on_resolve。</p>
+      </div>
+      <div class="tl reveal">
+        <div class="step">STEP 04 · 實作</div>
+        <h4>三排程器 + 真實效果</h4>
+        <p>純 core 寫出 A／B／C 三排程器與移動／撞牆／攻擊／拾取效果，接進 ZoneWorld（additive，不動既有 move）。</p>
+      </div>
+      <div class="tl reveal">
+        <div class="step">STEP 05 · 前端</div>
+        <h4>Timer 驅動 + 即時打斷 + Cast</h4>
+        <p>map_view 改 Timer 推進、輸入只 submit；新增詠唱技能與「詠唱中按移動＝即時打斷」。</p>
+      </div>
+      <div class="tl reveal">
+        <div class="step">STEP 06 · 系統</div>
+        <h4>DoT + JSON 技能 + NPC 智能</h4>
+        <p>持續傷害系統、actions.json 資料化技能、NPC 追擊與施法者；最終 ctest 49 案／168 斷言全綠。</p>
+      </div>
+      <div class="tl reveal">
+        <div class="step">STEP 07 · 工具</div>
+        <h4>診斷 UI + Trace + 真 bug 修復</h4>
+        <p>詳細 debug 面板與 trace log；修掉玩家致死雙重 destroy 崩潰、verify.gd 假通過、CJK 亂碼等真實 bug。</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- 下一步 -->
+  <section style="border-bottom:0;">
+    <p class="eyebrow">接下來看哪裡</p>
+    <h2>三條路線</h2>
+    <div class="grid c3">
+      <a class="card cyan reveal" href="architecture.html" style="text-decoration:none;color:inherit;">
+        <div class="ico">🗺</div>
+        <h3>怎麼看程式 →</h3>
+        <p>三層架構、檔案地圖、真相層在哪、各資料夾負責什麼。先讀這個就不會迷路。</p>
+      </a>
+      <a class="card fire reveal" href="mechanics.html" style="text-decoration:none;color:inherit;">
+        <div class="ico">⚙</div>
+        <h3>機制詳解 →</h3>
+        <p>三排程器差在哪、技能參數表、DoT 怎麼結算、NPC 怎麼決策。想懂內部讀這個。</p>
+      </a>
+      <a class="card heal reveal" href="testing.html" style="text-decoration:none;color:inherit;">
+        <div class="ico">✓</div>
+        <h3>測試與驗證 →</h3>
+        <p>怎麼 build、怎麼跑 ctest、怎麼 headless 驗證、怎麼實機操作與按鍵對照表。</p>
+      </a>
+    </div>
+  </section>
+
+</main>
+
+<footer>
+  <div class="wrap foot-inner">
+    <span>gamecore-zone · Area Layer · 區域層原型</span>
+    <span>建置：CMake + EnTT + cereal · 前端：Godot 4.6 GDExtension</span>
+  </div>
+</footer>
+
+<script src="assets/app.js"></script>
+</body>
+</html>
