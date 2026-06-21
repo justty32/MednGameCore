@@ -110,4 +110,15 @@ if(ZONE_BUILD_GDEXTENSION)
     target_compile_definitions(zone_gd PRIVATE
         ZONE_DATA_DIR="${CMAKE_SOURCE_DIR}/data"
     )
+
+    # 建置後自動把 .so/.dll 複製到 Godot 專案的 res://bin/，
+    # 省去每次重編後手動複製（godot_zone/bin/ 為 gitignore）。
+    add_custom_command(TARGET zone_gd POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E make_directory
+            "${CMAKE_SOURCE_DIR}/godot_zone/bin"
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different
+            "$<TARGET_FILE:zone_gd>" "${CMAKE_SOURCE_DIR}/godot_zone/bin/"
+        COMMENT "複製 $<TARGET_FILE_NAME:zone_gd> → godot_zone/bin/"
+        VERBATIM
+    )
 endif()
