@@ -47,13 +47,13 @@
   <span class="hl">Region Layer</span>  區域群、跨地圖移動
         │
   <span class="at">Area   Layer</span>  ◀── <span class="at">本 repo（gamecore-zone）</span>
-                一張地圖 · ECS · FOV · 回合排程 · 戰鬥</div>
+                一張地圖 · ECS · FOV · TurnEngine · 戰鬥</div>
     </div>
 
     <div class="note">
       <b class="t">出身</b>
       本層是從 <code>opennefia-cpp</code> <strong>hard fork</strong> 出來的：保留了成熟的 ECS／FOV／戰鬥骨架，
-      但把 OpenNefia 特有的機制（事件匯流排、原型管理器、spawn 系統）整套拿掉，換上自己的回合排程與效果系統。
+      但把 OpenNefia 特有的機制（事件匯流排、原型管理器、spawn 系統）整套拿掉，換上自己最精簡的傳統回合制引擎。
     </div>
   </section>
 
@@ -61,36 +61,30 @@
   <section>
     <p class="eyebrow">檔案地圖</p>
     <h2>每個資料夾在幹嘛</h2>
-    <p>整個專案被 git 追蹤的檔案不多（約 80 個），心智負擔低。重點集中在 <code>src/core/turn/</code>。</p>
+    <p>整個專案被 git 追蹤的檔案不多，心智負擔低。重點集中在 <code>src/core/turn/</code>。</p>
 
     <div class="tree reveal">
 <span class="d">MednGameCore/</span>
-├─ <span class="d">src/core/</span>                  <span class="cmt"># 純 C++ 核心，不依賴 Godot，可單獨 ctest</span>
-│  ├─ <span class="hot">turn/</span>                  <span class="cmt"># ★ 心臟：回合排程 + Action + 效果</span>
-│  │  ├─ <span class="f">turn_scheduler.h</span>      <span class="cmt"># 排程器介面 advance()/step()</span>
-│  │  ├─ <span class="f">energy_instant_*</span>      <span class="cmt"># A 排程器：能量瞬發</span>
-│  │  ├─ <span class="f">energy_channel_*</span>      <span class="cmt"># B 排程器：能量 + 可打斷詠唱（最完整）</span>
-│  │  ├─ <span class="f">tick_remaining_*</span>      <span class="cmt"># C 排程器：純 tick，跳到下一結算</span>
-│  │  ├─ <span class="f">make_scheduler.cpp</span>    <span class="cmt"># 依 mode 產生 A/B/C</span>
-│  │  ├─ <span class="f">action.h / action_def.*</span> <span class="cmt"># 指令值型別 + JSON 可組合原語</span>
-│  │  ├─ <span class="f">action_effects.h</span>      <span class="cmt"># on_channel / on_resolve 介面</span>
-│  │  ├─ <span class="f">zone_effects.*</span>        <span class="cmt"># 移動/撞牆/攻擊/拾取/nova 實作</span>
-│  │  ├─ <span class="f">timed_effect.h</span>        <span class="cmt"># DoT：燃燒/中毒/回復</span>
-│  │  ├─ <span class="f">npc_brain.*</span>           <span class="cmt"># NPC 追擊 + 施法決策</span>
-│  │  └─ <span class="f">turn_world.h</span>          <span class="cmt"># 排程器看到的世界視圖 + trace sink</span>
+├─ <span class="d">src/core/</span>                  <span class="cmt"># 純 C++ 核心，不依賴 Godot，可單獨測</span>
+│  ├─ <span class="hot">turn/</span>                  <span class="cmt"># ★ 心臟：TurnEngine + Action + 結算</span>
+│  │  ├─ <span class="f">turn_engine.{h,cpp}</span>   <span class="cmt"># 回合引擎：actor list、begin_round/step</span>
+│  │  ├─ <span class="f">action.h</span>             <span class="cmt"># Action{kind,param}：Idle/Move/Wait</span>
+│  │  ├─ <span class="f">apply_action.{h,cpp}</span>  <span class="cmt"># 把 Action 結算到世界 + decide_chase</span>
+│  │  ├─ <span class="f">move_dir.h</span>           <span class="cmt"># encode_dir / decode_dir（方向 0..8）</span>
+│  │  └─ <span class="f">zone_event.h</span>         <span class="cmt"># BumpedWall/Actor、ActorDied、ItemPickedUp…</span>
+│  ├─ <span class="d">components/</span>             <span class="cmt"># ControllerComponent / ActPointComponent…</span>
 │  ├─ <span class="d">systems/</span>               <span class="cmt"># fov_system / npc_ai_system</span>
 │  └─ <span class="d">serialize/</span>             <span class="cmt"># cereal 存讀檔（save_store / save_load）</span>
 ├─ <span class="d">src/gbind/</span>                <span class="cmt"># GDExtension 綁定層（C++ ↔ Godot）</span>
-│  ├─ <span class="f">zone_world_gd.*</span>         <span class="cmt"># ZoneWorld：submit_hero_* / step / get_debug_text</span>
+│  ├─ <span class="f">zone_world_gd.*</span>         <span class="cmt"># ZoneWorld：next_round / player_move / player_wait</span>
 │  └─ <span class="f">register_types.cpp</span>     <span class="cmt"># 對 Godot 註冊類別</span>
 ├─ <span class="d">godot_zone/</span>               <span class="cmt"># Godot 專案（GDScript 前端）</span>
-│  ├─ <span class="hot">map_view.gd</span>            <span class="cmt"># ★ 前端主控：輸入 → submit、Timer 推進、畫面</span>
+│  ├─ <span class="hot">map_view.gd</span>            <span class="cmt"># ★ 前端主控：輸入 → player_move/wait、畫面</span>
 │  ├─ <span class="f">map_view.tscn</span>          <span class="cmt"># 主場景</span>
 │  └─ <span class="f">verify.gd</span>             <span class="cmt"># headless 驗證腳本</span>
-├─ <span class="d">data/</span>
-│  └─ <span class="hot">actions.json</span>           <span class="cmt"># ★ 技能資料：火球/治療/隕石/劇毒…</span>
-├─ <span class="d">tests/src/</span>               <span class="cmt"># doctest 單元測試（49 案）</span>
-├─ <span class="d">docs/superpowers/</span>        <span class="cmt"># 設計文件 + 實作計畫（真相層）</span>
+├─ <span class="d">tests/src/</span>               <span class="cmt"># doctest 單元測試（29 案）</span>
+├─ <span class="d">docs/superpowers/</span>        <span class="cmt"># 設計文件 + 實作計畫（含歷史設計）</span>
+├─ <span class="d">docs/ideas/</span>             <span class="cmt"># 後續設計主題（未來可選擴充）</span>
 └─ <span class="f">session_log.md</span>          <span class="cmt"># 逐步開發日誌（想知道為什麼這樣做就讀它）</span>
     </div>
   </section>
@@ -99,15 +93,15 @@
   <section>
     <p class="eyebrow">真相層</p>
     <h2>哪些檔案是「設計的權威來源」</h2>
-    <p>程式碼會變，但設計意圖寫在文件裡。要理解「為什麼這樣設計」，這四份是權威：</p>
+    <p>程式碼會變，但設計意圖寫在文件裡。要理解「現在怎麼跑」與「為什麼這樣設計」：</p>
 
     <table class="tbl reveal">
       <thead><tr><th>檔案</th><th>它回答什麼問題</th></tr></thead>
       <tbody>
+        <tr><td>src/core/turn/turn_engine.h</td><td>現況真相：actor list、begin_round/step、Player 阻塞 vs Self 立即解算</td></tr>
+        <tr><td>src/core/turn/apply_action.{h,cpp}</td><td>現況真相：移動／撞牆／撞擊攻擊／拾取／下樓梯怎麼結算、decide_chase</td></tr>
         <tr><td>session_log.md</td><td>逐步做了什麼、每個決策的理由、踩過哪些坑（最快的上手入口）</td></tr>
-        <tr><td>…specs/2026-06-07-action-and-turn-scheduler-design.md</td><td>Action 型別、三排程器 advance() 怎麼算、測試情境 §8</td></tr>
-        <tr><td>…specs/2026-06-03-gamecore-zone-design.md §7</td><td>回合迴圈、對稱 actor 模型、Godot↔C++ 介面</td></tr>
-        <tr><td>…plans/2026-06-07-…scheduler.md</td><td>排程器這塊的實作計畫（13 tasks 拆解）</td></tr>
+        <tr><td>docs/ideas/、docs/superpowers/</td><td>歷史設計與未來方向：能量制／詠唱／技能／狀態效果等已移除實驗的設計探索，重新定位為「建立在 TurnEngine 之上的未來可選擴充」</td></tr>
       </tbody>
     </table>
   </section>
@@ -116,33 +110,33 @@
   <section>
     <p class="eyebrow">資料怎麼流</p>
     <h2>一次玩家輸入發生了什麼</h2>
-    <p>前端永遠不直接改世界，只「提交指令」與「推進時間」，規則全在 C++。</p>
+    <p>前端永遠不直接改世界，只「提交指令」，規則全在 C++。按一鍵＝英雄行動一次＋整輪 NPC 行動一輪。</p>
 
     <div class="term reveal">
       <div class="term-bar"><span class="lights"><i class="l-r"></i><i class="l-y"></i><i class="l-g"></i></span> 一次「按 D 往右走」的資料流</div>
 <div class="term-body"><span class="hl">[GDScript] map_view.gd</span>
    按下 D
-      │  world.submit_hero_move(1, 0)        <span class="wl"># 只登記指令，不馬上動</span>
+      │  world.player_move(1, 0)             <span class="wl"># 若未在回合中先自動開一輪</span>
       ▼
 <span class="hl">[GDExtension] zone_world_gd.cpp</span>
-   把指令塞進英雄的 OngoingAction
-      │  Timer 每 0.2s → world.step_scheduler()
+   輪到英雄（WaitingPlayer）→ submit(hero, Move)
+      │  pump()：反覆 step() 跑完整輪 NPC
       ▼
-<span class="hl">[C++ core] energy_channel_scheduler.cpp</span>
-   發能量 → 輪到英雄 → on_resolve
-      │  zone_effects: resolve_move(1,0)
+<span class="hl">[C++ core] turn_engine.cpp / apply_action.cpp</span>
+   英雄 resolve → apply_action(Move 1,0)
+      │  NPC 們 decide_chase → apply_action 追擊
       ▼
-   撞牆？攻擊？拾取？ → 發 ZoneEvent + trace
-      │  推進到「英雄再次等指令」才停
+   撞牆？撞擊攻擊？拾取？下樓梯？ → 發 ZoneEvent + trace
+      │  pump 到「玩家等待 / 回合結束 / 換樓層」才停
       ▼
-<span class="hl">[GDScript]</span> drain_events → 重畫地圖 + 更新 debug 面板</div>
+<span class="hl">[GDScript]</span> drain_events → signal → 重畫地圖 + 更新 debug 面板</div>
     </div>
 
     <div class="note warn">
       <b class="t">關鍵設計</b>
-      C++ <strong>擁有規則、擁有時間</strong>；Godot 只負責「畫面 + 輸入 + 計時器」。
-      三條時鐘是分開的：<code>render_frame</code>（畫）、<code>on_input</code>（提交）、<code>advance_tick</code>（推進）。
-      世界阻塞的定義 = 英雄 idle 且沒指令，此時 C++ 不空轉，靜靜等你下一步。
+      C++ <strong>擁有規則、擁有時間</strong>；Godot 只負責「畫面 + 輸入 + 訊號」。
+      <code>EngineCtx</code> 把 registry 留在外面（引擎不持有 registry），引擎保持純粹可測。
+      玩家阻塞的定義 = 輪到 Player 操控者，<code>step()</code> 回 <code>WaitingPlayer</code> 暫停等 <code>submit()</code>，C++ 不空轉。
     </div>
   </section>
 
@@ -160,14 +154,14 @@
       <div class="card cyan reveal">
         <span class="k">2</span>
         <div class="ico">⟳</div>
-        <h3>energy_channel_scheduler.cpp</h3>
-        <p>三排程器中最完整的一個。看懂它，能量＋詠唱＋打斷的模型就通了。</p>
+        <h3>turn_engine.h / apply_action.cpp</h3>
+        <p>整個回合制地基都在這。看懂 actor list、step、撞擊攻擊與 decide_chase，核心就通了。</p>
       </div>
       <div class="card heal reveal">
         <span class="k">3</span>
         <div class="ico">🎮</div>
         <h3>godot_zone/map_view.gd</h3>
-        <p>前端如何把鍵盤變成 submit、如何用 Timer 推進、畫面怎麼來。對照著玩最有感。</p>
+        <p>前端如何把鍵盤變成 player_move／player_wait、畫面怎麼來。對照著玩最有感。</p>
       </div>
     </div>
     <div class="hero-cta" style="margin-top:30px;">

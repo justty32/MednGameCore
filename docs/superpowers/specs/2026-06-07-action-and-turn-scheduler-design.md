@@ -1,11 +1,25 @@
 # Action 型別與可切換回合排程器設計（2026-06-07）
 
-> 狀態：設計定案，尚未實作。承接 §7 回合迴圈與 `turn-loop-example.cpp`（order 表模型）。
+> ## ⚠ 狀態更新（2026-06-21）：本文整體已被取代（superseded）
+>
+> 本文設計並後續實作的「**三種可即時切換的回合排程器（A 能量瞬發 / B 能量＋channel / C 純 tick remaining）＋ ActionDef/資料驅動技能 ＋ DoT/zone_effects ＋ EffectRegistry/ActionLibrary ＋ 能量/行動值時間模型 ＋ 多回合詠唱（channel）與打斷**」整套系統，已於 **2026-06-21 回合系統重構中整體移除**（淨刪約 1300 行）。
+>
+> 連先前 `docs/ideas` 在討論的「三排程器收斂到 B」也被更激進的決定取代：**連 B 也拿掉**，回到教科書式回合制。實際採用的是最簡 `TurnEngine`（見 `src/core/turn/turn_engine.{h,cpp}`、`src/core/turn/apply_action.{h,cpp}`、`src/core/turn/action.h`）：
+> - actor 一條 `std::list`，**順序＝加入序**；`Action{ ActionKind kind; int param; }`，`ActionKind` 只有 `Idle/Move/Wait`（**無 Attack/Cast/技能**，攻擊＝移動進入有 actor 的格子）；
+> - 每 actor 本回合首次輪到重設 `ActPointComponent = 1000`、行動後歸 0；
+> - `Player` 阻塞等 `submit()`、`Self`/`Faction` 立即 `decide()`；NPC AI ＝ `decide_chase`（朝目標走一格、相鄰即撞擊）；
+> - **已移除的檔案／概念**：`turn_scheduler.h`、`turn_world.h`、`energy_instant_scheduler.*`、`energy_channel_scheduler.*`、`tick_remaining_scheduler.*`、`make_scheduler.cpp`、`action_def.{h,cpp}`、`action_effects.h`、`zone_effects.{h,cpp}`、`timed_effect.h`、`npc_brain.{h,cpp}`，以及 `EnergyComponent`/`OngoingActionComponent`/`PlayerControlledComponent` 三個元件、`data/actions.json` 技能、world clock 等。新增 `ControllerComponent`、`ActPointComponent`。
+>
+> 本文以下**保留作歷史設計記錄**——能量制／先攻／詠唱／技能／狀態效果已重新定位為「建立在最簡 TurnEngine 之上的未來可選擴充主題」（見 `docs/ideas/`），不是現有程式。閱讀時所有「定案 / 要做 / 三版」字樣均不代表現況。
+
+> 狀態（歷史）：設計定案，尚未實作。承接 §7 回合迴圈與 `turn-loop-example.cpp`（order 表模型）。
 > 本設計把「下一塊硬骨頭：Action 型別」與「時間/速度模型」一起定下來，並決定**同時實作三種排程器**供切換比較。
 
 ## 0. 動機與背景
 
-- 現況（`src/gbind/zone_world_gd.cpp`）是同步單英雄 roguelike：`move()`/`wait_turn()` 讓英雄動一步，`advance_turn()` 跑一次 `npc_ai_system`。無 duration、無 order 表、無多角色。
+> 註（2026-06-21）：以下「現況」是 2026-06-07 當時的時間點描述，非今日現況。今日現況見檔首狀態更新（最簡 `TurnEngine`）。
+
+- 當時現況（`src/gbind/zone_world_gd.cpp`）是同步單英雄 roguelike：`move()`/`wait_turn()` 讓英雄動一步，`advance_turn()` 跑一次 `npc_ai_system`。無 duration、無 order 表、無多角色。
 - §7 收斂出「玩家＝指令來源不同的 actor」的對稱模型；`turn-loop-example.cpp` 進一步定案多角色 order 表（無單一 hero，阻塞＝玩家 actor idle 且無指令）。
 - 本設計引入 **ToME4「行動值」(energy) 速度模型** 作為時間軸基礎，並把 Action 表示法、效果時點一併定案。
 - ToME4 參考（analysis 索引層、非權威）：`analysis/t-engine/architecture/lua_engine_detail.md:208-245`（GameEnergyBased/GameTurnBased tick）、`:282-304`（timed effect / DoT）。

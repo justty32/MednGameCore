@@ -1,3 +1,24 @@
+/* =============================================================================
+ * ⚠ 狀態更新（2026-06-21）：本草稿描述的模型已被取代（SUPERSEDED）
+ *
+ * 本檔的對稱 tick_actor / OngoingActionComponent / 經過時間（pass_time）能量演繹
+ * 回合迴圈路線，以及 step()/display_chunk/「玩家恆先手」等設計，最終「沒有採用」。
+ * 已於 2026-06-21 回合系統重構中整體移除（連同後續的 order 表 + A/B/C 三排程器 +
+ * 技能/DoT/zone_effects 整套實驗）。
+ *
+ * 實際採用的是最簡單的傳統回合制 TurnEngine（見 src/core/turn/turn_engine.{h,cpp}、
+ * src/core/turn/apply_action.{h,cpp}、src/core/turn/action.h）：
+ *   - actor 一條 std::list，順序＝加入序（hero 最先加入、每回合最先行動）；
+ *   - 每 actor 本回合首次輪到時 ActPointComponent 重設 kActPointFull = 1000、行動後歸 0；
+ *   - 操控者分派靠 ControllerComponent.kind：Player 阻塞等 submit()、Self/Faction 立即 decide()；
+ *   - NPC AI ＝ 最精簡 decide_chase（朝目標走一格、相鄰即撞擊攻擊）；
+ *   - 沒有 pass_time/能量模型、沒有 OngoingActionComponent、沒有 channel/display_chunk、
+ *     沒有 Snapshot/step()、沒有技能/DoT。Action 只有 Idle/Move/Wait（無 Attack/Cast）。
+ *
+ * 以下內容保留作歷史設計記錄；勿當成現況或現存 API。
+ * =============================================================================
+ */
+
 // =============================================================================
 // 回合迴圈設計草稿 (conceptual sketch — 非可編譯實作)
 //

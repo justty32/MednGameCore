@@ -1,27 +1,31 @@
-# 目標選擇：方向、游標與範圍預覽
+# 目標選擇：方向、游標與範圍預覽（未來擴充）
 
-> 日期：2026-06-11
-> 定位：為 bolt/cone/smite_target 等非 self-nova 技能設計前端選目標流程。
+> 日期：2026-06-21
+> 定位：為「未來引入需選目標的動作」設計前端選目標流程（方向選擇 / 游標 / 範圍預覽）。
+
+> 狀態更新（2026-06-21）：回合系統重構後，技能/詠唱/範圍攻擊（nova/bolt/cone/smite_target）**全部移除**，現況動作只有移動與等待，**不存在需要瞄準的動作**。本主題因此重新定位為**未來條件式擴充**：若日後在最簡 TurnEngine 之上引入「需指定方向或目標格的動作」，這份設計即為前端落地藍圖。其視覺化與資料流設計仍具價值，故保留。
 
 ---
 
-## 1. 為什麼需要 targeting
+## 1. 為什麼（未來）需要 targeting
 
-現在技能全部是以自己為中心的 nova，按鍵即可施放。當 `ActionDef.shape` 擴成 bolt、cone、指定格後，玩家需要先表達「往哪裡」或「打哪格」。
+現況以「撞擊攻擊」為唯一戰鬥手段：移動進入有 actor 的格子即攻擊，無需瞄準。
+但若未來引入遠程/範圍/指定格的動作（投擲、遠程攻擊、指向型互動等），
+玩家就需要先表達「往哪裡」或「打哪格」——屆時才需要本文的 targeting 流程。
 
-## 2. 第一階段：方向 targeting（優先序：中高）
+## 2. 第一階段：方向 targeting（優先序：中高，俟方向型動作引入）
 
 流程：
 
 ```text
-按 skill -> 進 direction_targeting -> 方向鍵 -> submit_skill(def, dir)
+觸發動作 -> 進 direction_targeting -> 方向鍵 -> 送出（動作, dir）
 ```
 
-適用：
+適用（未來動作型態）：
 
-- bolt
-- cone
-- dash / knockback 類方向技能
+- bolt（直線）
+- cone（扇形）
+- dash / knockback 類方向位移
 
 前端預覽：
 
@@ -29,20 +33,20 @@
 - 牆後格子不高亮。
 - 若第一個命中者可算出，顯示目標框。
 
-## 3. 第二階段：游標 targeting（優先序：中）
+## 3. 第二階段：游標 targeting（優先序：中，俟指定格動作引入）
 
 流程：
 
 ```text
-按 skill -> 游標出現在 hero 或最近敵人 -> 移動游標 -> confirm -> submit_skill(def, packed_xy)
+觸發動作 -> 游標出現在 hero 或最近敵人 -> 移動游標 -> confirm -> 送出（動作, packed_xy）
 ```
 
-適用：
+適用（未來動作型態）：
 
-- smite_target
+- 指定格動作（smite_target 類）
 - 丟物品
 - 檢視敵人
-- 未來遠程互動
+- 遠程互動
 
 游標狀態純前端保存；core 只收到打包後座標。
 
@@ -51,13 +55,15 @@
 短期可前端重算簡單幾何；中期建議 core export：
 
 ```gdscript
-zone_world.preview_action(actor_id, action_def, param) -> Array[Vector2i]
+zone_world.preview_action(actor_id, action, param) -> Array[Vector2i]
 ```
 
-原因：牆阻擋、FOV、友軍傷害、射線停在第一個 actor 等規則最終都在 core，預覽若與 resolve 不一致會傷手感。
+原因：牆阻擋、FOV、射線停在第一個 actor 等規則最終都在 core，預覽若與結算不一致會傷手感。
+（注意：此 API 尚不存在，須隨對應動作擴充一併設計。）
 
 ## 5. 不做的事
 
 - 不做自由像素瞄準；本遊戲是格子戰術。
 - 不讓預覽承諾 RNG 結果；只預覽範圍與可能目標，不預覽命中/暴擊。
 - 不在 targeting 第一版處理滑鼠 hover 全功能。
+- 在引入帶目標的動作之前，不預先實作 targeting UI——現況無動作可瞄準。

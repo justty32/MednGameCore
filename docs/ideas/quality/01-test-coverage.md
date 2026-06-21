@@ -1,7 +1,9 @@
 # 測試覆蓋盤點與缺口
 
-> 日期：2026-06-11
-> 定位：現有 ctest 49 cases / 168 assertions 覆蓋什麼、缺什麼——以可立即動工的測試案清單呈現。
+> 日期：2026-06-21
+> 定位：現有 doctest 29 cases / 93 assertions 覆蓋什麼、缺什麼——以可立即動工的測試案清單呈現。
+>
+> **狀態更新（2026-06-21）**：原盤點以三排程器 + 技能 + DoT 的測試檔為對象。回合系統重構後，`test_turn_scheduler.cpp` / `test_npc_brain.cpp` / `test_zone_effects.cpp` 已刪除，新增 `test_turn_engine.cpp`。本檔依新測試樹重新盤點，並重估缺口。
 
 ---
 
@@ -9,83 +11,67 @@
 
 | 檔案 | 覆蓋 | 評估 |
 |---|---|---|
-| `test_turn_scheduler.cpp` | §8 五情境：速度差(A/B)、channel 完成(B/C)、打斷(B/C)、玩家阻塞(A/B/C)、多角色阻塞(A/B/C) | 行為面良好；缺等價性與邊界（見 02） |
-| `test_zone_effects.cpp` | Move/撞牆/攻擊擊殺/拾取、Cast nova+打斷、DoT 三案、玩家不滅、JSON 載入/後備、LibraryEffects fireball/heal、radius/dot_kind、trace 有輸出 | 主力檔；單一 effect 粒度完整 |
-| `test_npc_brain.cpp` | decide_chase 方向、相鄰撞擊、caster 放 npc_flame、遠距仍移動 | 純函式測試，乾淨 |
-| `test_npc_combat.cpp` | 舊 NpcAiSystem 鄰接攻擊（含實體建立順序回歸案） | 屬舊系統路徑，保留作回歸 |
+| `test_turn_engine.cpp` | 加入序＝回合序（linked list 維護）、每 actor 每回合行動點數重設 1000 且全 Self 一輪跑完、玩家 actor 阻塞 submit 後續跑、撞 actor 即攻擊致死發 ActorDied | 新主力檔；引擎核心行為覆蓋良好；缺整合與決定性回放（見 02、03） |
+| `test_npc_combat.cpp` | 鄰接攻擊（含實體建立順序回歸案） | 戰鬥路徑回歸；可逐步併入 `apply_action` / `decide_chase` 觀點 |
 | `test_serialize.cpp` | Spatial round-trip、parent entity 引用、空 registry、純 Hero tag、檔案 API、FolderSaveStore | **只測了清單內元件的一小部分**（見 §3） |
 | `test_phase4.cpp` | MapData resize/旗標/越界、Map+WorldState 序列化、牆阻擋、多實體序列化 | 地圖層 OK |
 | `test_ecs.cpp` | EntityManager create/destroy/component/系統執行序 | 基礎 OK |
 
-結構性觀察：測試金字塔只有兩層——doctest 單元測試與 verify.gd 端到端，
-中間缺「core 層整合測試」（完整 ZoneWorld 等價物：map+scheduler+effects+NPC 跑多回合）。
-目前最接近的是 test_zone_effects 的 DoT-via-scheduler 案，值得擴充成一個共用 fixture。
+> 已刪除（重構移除）：`test_turn_scheduler.cpp`、`test_npc_brain.cpp`、`test_zone_effects.cpp`。
+> 這三檔對應的能量排程器、施法者 brain、effect/DoT 系統皆已不存在；不需補回，相關覆蓋觀念已合併到 `test_turn_engine.cpp` 與 `apply_action`。
+
+結構性觀察：測試金字塔仍只有兩層——doctest 單元測試與 verify.gd 端到端，
+中間缺「core 層整合測試」（完整 ZoneWorld 等價物：map + TurnEngine + apply_action + NPC 跑多回合）。
+目前最接近的是 `test_turn_engine` 的「全 Self 一輪跑完」案，值得擴充成一個共用 arena fixture。
 
 ## 2. 缺口總表
 
 | # | 缺口 | 優先序 | 工作量 |
 |---|---|---|---|
-| G1 | 序列化元件清單不完整（§3） | **高** | 中 |
-| G2 | 排程器等價性不變量（→ 02 檔） | **高** | 中 |
-| G3 | `Action.def` 索引跨存檔/跨 JSON 改版的穩定性（§4） | 高 | 小 |
-| G4 | scheduler safety guard 靜默返回無測試（§5） | 中 | 小 |
-| G5 | TurnConfig 非預設值（energy_to_act≠1000 等）下的行為 | 中 | 小 |
-| G6 | 多 NPC + 玩家混合的整合場景（追擊至死、nova 連殺、同回合互殺） | 中 | 中 |
-| G7 | 邊界：speed_mod=0 / 負數、weight=0、地圖 1×1、actor 無 Energy 元件 | 中 | 小 |
+| G1 | 序列化 round-trip 不完整（含新元件 ControllerComponent / ActPointComponent）（§3） | **高** | 中 |
+| G2 | 決定性回放不變量（→ 02 檔） | **高** | 中 |
+| G3 | `apply_action` 結算分支覆蓋（撞牆/撞 actor/移動拾取/踩樓梯/Wait）（§4） | 高 | 小 |
+| G4 | TurnEngine 邊界：空 list、單 actor、行動中 remove_actor（cursor 安全）、清空後 begin_round | 中 | 小 |
+| G5 | `decide_chase` 在無目標 / 已相鄰 / 對角 各分支 | 中 | 小 |
+| G6 | 多 NPC + 玩家混合的整合場景（追擊至死、同回合互殺、撞擊致死後 list 移除） | 中 | 中 |
+| G7 | 邊界：地圖 1×1、actor 無 ActPointComponent、move 方向編碼 0..8 全列舉 | 中 | 小 |
 | G8 | ZoneEvent 流的完整性斷言（事件數量/順序，而非「至少一個」） | 低 | 小 |
 | G9 | `core/util/`、FOV 系統（fov_system.cpp）無任何測試 | 低 | 中 |
 
 ## 3. G1：序列化 round-trip 的真實缺口（優先序：高、工作量：中）
 
-`src/core/serialize/all_components.h` 的 `AllComponents` 清單目前為：
-Actor、Spatial、MapData、NpcAi、Health、Item、CombatStats、WorldState、Hero。
+`src/core/serialize/all_components.h` 的 `AllComponents` 清單在重構後已更新：
+**加入** `ControllerComponent`、`ActPointComponent`；**移除** `EnergyComponent`、`OngoingActionComponent`、`PlayerControlledComponent`（後三者連同所屬系統已刪除）。
 
-**缺**（皆為排程器時代新增）：
-- `EnergyComponent` —— 存檔再讀，所有 actor 能量歸零，行動順序重排
-- `OngoingActionComponent` —— **channel 詠唱到一半存檔，讀回後詠唱消失**
-- `TimedEffectsComponent` —— 燃燒/中毒/回復 buff 存檔即消失
-- `PlayerControlledComponent` —— 讀回後玩家阻塞判定失效（hero 變 NPC 行為）
+待測的真實缺口（皆為「清單已含、但 round-trip 未斷言」）：
+- `ControllerComponent` —— 存讀檔後 `kind`（Player/Self/Faction）與 `faction` 引用是否一致；讀回後 hero 是否仍被引擎判為玩家阻塞（否則 hero 會變 NPC 行為）。
+- `ActPointComponent` —— 行動點數 `value` 是否原值還原（雖然每回合首次輪到會重設 1000，但回合中存檔應保留當前值，需明確定義並斷言）。
 
-另外兩個不在 registry 的狀態也會遺失：scheduler 內部 `pending_` map、
-`TurnWorld.clock` / `ZoneWorld.world_clock_`。前者可接受（讀檔後重新等指令），
-後者應併入 WorldStateComponent。
+另兩個不在 registry 的狀態也需檢視：`TurnEngine` 的內部 `order_` linked list 與 `pending_` map。
+- `order_`（actor 順序）：存檔後讀回需能重建（目前由 setup 依實體重新 `add_actor`，順序＝實體遍歷序，須確認與存檔前一致）。
+- `pending_`（玩家待提交指令）：讀檔後重新等指令即可，可接受不持久化，但要寫成明確斷言/註解。
 
-建議測試（先寫測試讓它紅，再補清單）：
-1. 「全元件 round-trip」：建一個掛滿所有元件的 actor，存→讀→逐欄位比對。
-2. 「channel 中存讀檔」：submit cast3、advance 兩步、save、load、繼續 advance
-   → 詠唱應在原進度上完成（或明確定義為取消，但要寫成斷言）。
-3. 「DoT 中存讀檔」：燃燒 3 回合過 1 回合存檔，讀回後應再燒 2 回合。
-4. **守門測試**：用 static_assert 或編譯期 type_list 長度比對「元件目錄」，
-   新增 component 檔案而未進 `AllComponents` 時測試失敗（最簡做法：一個
-   手寫 expected count + 註解指向 all_components.h，加元件忘記更新就紅）。
+建議測試（先寫測試讓它紅，再補實作）：
+1. 「全元件 round-trip」：建一個掛滿所有清單元件（含 Controller/ActPoint）的 actor，存→讀→逐欄位比對。
+2. 「回合中存讀檔」：開一輪、英雄行動到一半（NPC 已動部分）時 save、load、續跑 → actor 順序與行動點語意一致。
+3. **守門測試**：以手寫 expected component count + 註解指向 `all_components.h`；新增 component 檔案而未進 `AllComponents` 時測試紅（最簡做法即可，不必上 type_list 反射）。
 
-注意：verify.gd 現有 save/load 案只比對 turn_count 與 floor 兩個整數，
-完全測不到上述缺口——這正是 04 檔「弱斷言」問題的另一例。
+注意：verify.gd 現有 save/load 案主要比對 turn_count 與 floor——
+測不到上述元件級缺口，這正是 04 檔「弱斷言」問題的另一例。
 
-## 4. G3：Action.def 索引穩定性（優先序：高、工作量：小）
+## 4. G3：apply_action 結算分支覆蓋（優先序：高、工作量：小）
 
-`Action.def` 是 `ActionLibrary` 的**整數索引**。若未來 OngoingActionComponent
-進入存檔（§3），而 actions.json 在版本間調整順序，舊存檔的 def 索引會指錯技能。
+`apply_action(reg, map, self, action, events)` 是世界唯一的 Action 落地點，分支明確、純函式、易測：
+- Move 撞牆/出界 → 發 `BumpedWall`，座標不變。
+- Move 撞 actor → 扣 `CombatStatsComponent.attack` 傷害；致死發 `ActorDied`（**不在此 destroy**，由呼叫端移除），未死發 `BumpedActor`。
+- Move 進空格 → 座標改變；踩到 health_potion 自動拾取回血發 `ItemPickedUp`；踩到下樓梯發 `ReachedStairDown`。
+- Wait / Idle → 消耗回合、不改世界。
 
-想法：
-- 短期：測試鎖住現有 JSON 順序（fireball=0…），改順序就紅，迫使有意識決策。
-- 長期：存檔層以 name 字串保存、載入時 `find()` 重解析；或 ActionDef 加穩定 id 欄位。
+想法：每個分支一個 `SUBCASE`，斷言（a）座標/HP 的精確變化、（b）事件型別與數量，而非「至少一個事件」。`events` 可傳 null，需另有一案驗證 null 路徑不崩。
 
-## 5. G4：safety guard 的可觀測性（優先序：中、工作量：小）
+## 5. G6/G7 速寫（中優先）
 
-`energy_channel_scheduler.cpp` 的 `advance()` 有 `guard < threshold * 64` 護欄，
-耗盡時**靜默** `waiting_ = null` 返回——若哪天能量增量被設成 0（TurnConfig 誤設、
-speed_mod 全 0），世界會「看似正常推進但什麼都沒發生」，正是 verify.gd 假通過的
-core 層翻版。三個排程器都應檢查同類路徑。
-
-想法：
-- guard 耗盡時若有 `w.trace` 吐一行 `"scheduler stalled"`；或在 TurnWorld 加
-  `stall_count` 統計欄位。
-- 測試：`speed_mod=0` 的單 NPC 世界 advance 一次，斷言 stall 被回報而非無事返回。
-
-## 6. G6/G7 速寫（中優先）
-
-- 整合 fixture：`make_arena(w, h, heroes, melee_npcs, caster_npcs, mode)` 回傳
-  registry+scheduler+events 包，三模式參數化。在其上寫：圍殺英雄（已有 verify.gd
-  版，搬進 ctest）、meteor r2 多殺、venom 疊加、互殺同回合的 valid 防護。
+- 整合 fixture：`make_arena(w, h, heroes, npcs)` 回傳 registry + TurnEngine + events 包。
+  在其上寫：圍殺英雄（已有 verify.gd 版，搬進 doctest）、同回合互殺的 valid 防護、
+  撞擊致死後 `remove_actor` 與 cursor 安全（死者正好是當前 cursor 時不應崩）。
 - 邊界值用 doctest 的 `SUBCASE` 批量列舉；重點不是行為「正確」而是「定義過且不崩」。

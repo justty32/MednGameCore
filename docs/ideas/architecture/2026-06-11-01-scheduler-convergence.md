@@ -1,14 +1,28 @@
-# 三排程器收斂策略
+# 三排程器收斂策略（結論已被超越）→ 先攻／能量制的未來擴充取捨
 
-> 日期：2026-06-11
-> 一句話定位：實驗期（A/B/C 可切換比較）過後，決定誰是正史、切換機制去留、以及用什麼準則拍板。
+> 日期：2026-06-11（原稿）／狀態更新：2026-06-21
+> 一句話定位：原為「實驗期 A/B/C 過後決定誰是正史」的收斂提議；現重定位為「若未來要重新引入
+> 先攻／能量制，該做什麼取捨」的設計參考。
+
+> [!IMPORTANT]
+> **結論已執行，且比本文更激進。** 本文原提議「三排程器收斂到 B 為唯一正史」。實際決定不是
+> 收斂——而是**連 B 也整個移除**，回到最簡傳統回合制 `TurnEngine`（順序＝加入序、一 actor 每
+> 回合行動一次、無能量／無 channel）。因此「現況」「提議：收斂到 B」「切換機制去留」三節描述的
+> 程式已不存在（`turn_scheduler.h`、三個 scheduler.cpp、`make_scheduler.cpp`、`SchedulerBase`、
+> `SchedulerMode`、`set_scheduler_mode`、TAB 切換全已刪除）。
+>
+> 下文保留的價值在於**取捨分析**（能量 vs tick vs 傳統）。把它讀作：「若未來要在 TurnEngine 上
+> 重新長出先攻／能量制，下列權衡仍然成立。」實作落點不再是『選哪個 scheduler』，而是『在
+> `TurnEngine` 的 `decide`/`resolve` 與 `ActPointComponent` 上做可替換擴充』。
 
 ---
 
-## 現況
+## 歷史現況（2026-06-11，已移除）
 
-`src/core/turn/` 三個實作共用 `TurnScheduler` 介面（`turn_scheduler.h`）+
-`SchedulerBase`（pending 收件匣、`waiting_actor()`、`actors_sorted()` 決定性迭代）：
+> 以下描述的程式已於 2026-06-21 重構整套刪除，僅留作背景。
+
+`src/core/turn/` 曾有三個實作共用 `TurnScheduler` 介面 + `SchedulerBase`（pending 收件匣、
+`waiting_actor()`、`actors_sorted()` 決定性迭代）：
 
 | | 檔案 | 行數(.cpp) | 模型 |
 |---|---|---|---|
@@ -16,52 +30,52 @@
 | B | `energy_channel_scheduler.cpp` | 95 | 能量 + 可打斷 channel（spec 標注「最完整」）|
 | C | `tick_remaining_scheduler.cpp` | 57 | 純 remaining_ticks，無能量 |
 
-切換點：`make_scheduler.cpp` 工廠 + `ZoneWorld::set_scheduler_mode(int)`
-（`src/gbind/zone_world_gd.h:47`），前端 TAB 鍵 flip。預設 B（`scheduler_mode_{1}`）。
+切換點曾是 `make_scheduler.cpp` 工廠 + `ZoneWorld::set_scheduler_mode(int)`，前端 TAB 鍵 flip。
 
-## 提議：收斂到 B 為唯一正史（優先序：高）
+## 實際決定：全移除，回到最簡 TurnEngine（已執行）
 
-理由（依 spec 與 session_log 實證）：
+不留任何 scheduler。`TurnEngine` 取代之：
 
-1. **B 是 A 的嚴格超集**：A = B 在所有 action `weight ≤ 1` 時的行為（B 的
-   `step_actor` 對 weight≤1 即刻 resolve）。A 沒有獨立存在價值，留著只是
-   「無 channel 的退化模式」，用資料（所有 ActionDef weight=1）就能重現。
-2. **C 缺速度表達**：spec §5.C 自己承認「無 ToME 風加速率 buff 表達」。
-   session_log 2026-06-11 的 NPC 速度差實驗（caster 80/近戰 130）正是
-   energy 模型才看得到的差異——玩法已實質依賴能量制。
-3. **DoT/hook 已三份維護**：`on_actor_turn` hook 與 `reg.valid` 防護
-   （防 DoT 自殺越界）在三個 `advance()` 各複製一份。每加一個回合開始/結束
-   時點的機制，成本 ×3。
+- 維護 `std::list<entt::entity>`，**順序＝加入序**（無 Initiative、無能量序、無 weight）。
+- `begin_round()` 後 `step(ctx)` 到 `RoundDone`；每 actor 本回合首次輪到時 `ActPointComponent.value`
+  重設 `kActPointFull = 1000`，行動後歸 0；**目前一 actor 每回合行動一次**。
+- 分派依 `ControllerComponent.kind`：`Player` → `WaitingPlayer` 暫停等 `submit`；`Self`/`Faction`
+  → 立即 `ctx.decide(e)` 再 `ctx.resolve()`。
 
-## 切換機制去留
+換言之：原本「能量 vs tick」的兩難被「都不要，先把回合制做到最乾淨」一刀切過。能量制不再是
+現存程式的退化選項，而是一個全新的、未來才考慮的擴充主題。
 
-- **介面留、工廠收斂**：`TurnScheduler` 抽象介面 + `make_scheduler` 保留
-  （測試與未來 Region 層排程器可能再用），但 `SchedulerMode` 枚舉縮成一項或
-  移到 tests-only。
-- **`set_scheduler_mode` 從 GDExtension 綁定移除**：前端不該有玩法語意上的
-  排程器選擇；TAB 鍵實驗功能移除。spec §9 開放項「切換時狀態處理」直接消滅
-  ——不再有切換，就沒有能量/channel 狀態跨版語意問題。
-- **A/C 程式碼處置**：移到 `tests/` 旁或直接刪除（git 歷史可考古）。建議
-  **刪**：保留會誘使「再比一下」，且 02（order 表）改介面時又得改三份。
+## 若未來要重新引入先攻／能量制（重定位後的提議）
 
-## 評估準則（拍板前最後驗證清單）
+下列分析原本用來「選正史 scheduler」，現在用來「評估要不要、以及怎麼在 TurnEngine 上加回」：
 
-收斂前用現有切換機制做一輪結構化比較，記錄到本目錄：
+- **落點不是新 class，而是擴充三個既有接點**：
+  1. `ActPointComponent.value`：已預留「依成本一回合行動多次」。能量制＝把 act_point 從
+     「回合首次輪到重設 1000、行動歸 0」改為「每 tick 累積、達門檻才行動、行動依 weight 扣減」。
+  2. `EngineCtx.decide`/`resolve`：行動成本（weight）由 `resolve` 回報、由引擎扣 act_point；
+     channel／詠唱＝`decide` 回一個「需多次 step 才完成」的動作，引擎在中途仍可被打斷。
+  3. actor list 取人順序：先攻＝把「加入序」換成「依 act_point/速度排序」的取人策略。
+- **介面保留可替換性**：`TurnEngine` 本身不該硬編能量；速度／先攻屬於「取人策略」與「成本結算」，
+  應做成可注入的策略物件，讓「傳統回合制」與「能量回合制」是同一引擎的兩種配置。
 
-| 準則 | 量法 | 預期勝者 |
-|---|---|---|
-| 玩法表達力 | 速度 buff、channel、打斷、DoT 是否原生支援 | B |
-| 決定性 | 同 seed 同指令序列 → 同世界狀態（serialize 後 hash 比對） | 三者皆須通過 |
-| 推進成本 | `advance()` 每次喚醒掃描量（A/B 每 tick 掃全 actor 累能 vs C 的 min-jump） | C（但 actor 數 <100 無感）|
-| 心智模型 | 向前端解釋 waiting/blocking 語意所需的文字量 | C 最簡、B 可接受 |
-| 跨層相容 | 能量 tick 能否映射到 Region 層分鐘級時間（見 05） | B/C 皆可，B 需定義 tick↔秒 |
+## 取捨分析（保留：能量 vs tick vs 傳統，作為擴充前的評估）
+
+| 準則 | 能量制（舊 B） | 純 tick（舊 C） | 傳統回合（現 TurnEngine） |
+|---|---|---|---|
+| 玩法表達力 | 速度 buff／channel／打斷／DoT 原生 | 速度差需另表達 | 最弱：人人等速、一回合一動 |
+| 心智模型成本 | 高：要向前端解釋 waiting/blocking/累能 | 中 | 最低：「按一鍵＝我動一次＋NPC 動一輪」 |
+| 決定性 | 同 seed 同序列須能 serialize 後 hash 相等 | 同上 | 最易保證（無浮點、無累能順序歧義）|
+| 推進成本 | 每 tick 掃全 actor 累能 | min-jump 跳到下一就緒 | O(actor)/回合，最低 |
+| 跨層相容（見 05）| 能量 tick → Region 分鐘需定義 tick↔秒 | 同上 | 回合 → Region 分鐘需定義回合↔時間 |
+
+結論方向：先攻／能量制的玩法價值真實存在（速度差、詠唱、打斷），但其複雜度只在玩法確實需要時
+才值得。當前選擇是先把傳統回合做穩，把能量制留作「需要時再在 act_point/decide/resolve 上長出來」
+的可選擴充。
 
 ## 風險
 
-- **中**：B 的能量制是 ToME4 借來的；若未來玩法走向「同時行動/計畫制」
-  （如 Frozen Synapse 式），能量序列模型要大改。緩解：`TurnScheduler`
-  介面保留，正史排程器仍是可替換單元。
-- **低**：刪 A/C 後測試覆蓋下降（`test_turn_scheduler.cpp` 五情境 ×3 變 ×1）。
-  緩解：情境測試本來就是介面級，保留全部情境只跑 B。
-- **低**：C 的 min-jump（整步推進）想法在 actor 很多、行動很長時有效能價值。
-  緩解：B 內部可加「無人就緒時直接跳到下一個就緒 tick」的快轉，等價吸收。
+- **中**：未來若玩法走向「同時行動／計畫制」（如 Frozen Synapse 式），無論能量序或回合序模型
+  都要大改。緩解：把「取人策略 + 成本結算」做成可替換單元，TurnEngine 本體只管 step/分派。
+- **低**：能量制的決定性比傳統回合難保證（同 tick 多人就緒的順序定義）。引入前須先寫
+  serialize 後 hash 比對的重播測試。
+- **已消除**：原「刪 A/C 後測試覆蓋下降」「切換時狀態跨版語意」等風險，因排程器整套移除而不再存在。

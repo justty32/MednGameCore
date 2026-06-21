@@ -1,7 +1,9 @@
 # 渲染升級：TileMapLayer / Sprite2D / 攝影機 / FOV
 
-日期：2026-06-11
+日期：2026-06-21
 定位：把「`generate_map_image()` 整圖重繪」升級為節點化渲染——地形 TileMapLayer、actor 獨立 Sprite2D、Camera2D 平滑跟隨、FOV 用調變層表現。
+
+> 狀態更新（2026-06-21）：本主題在回合系統重構後**大致仍有效**——`generate_map_image()` 與 FOV（`map.is_visible/is_explored`）皆保留於現況。本次僅修正過時引用（移除已不存在的 `is_caster`／能量欄位、`step_scheduler` 觸發路徑等），渲染升級設計本身不受重構影響。
 
 ---
 
@@ -46,10 +48,11 @@ Godot 4.3+ 用 `TileMapLayer`（單層節點，舊 `TileMap` 已 deprecated）�
 - `Actors` 節點下維護 `Dictionary[int eid → Sprite2D]`。每次同步：
   新 eid → 從池取出/新建；消失的 eid → 回收（死亡動畫播完再收，見 02）。
 - sprite 位置 = `Vector2(x, y) * CELL_PX`（與現有 CELL_PX=16 一致）。
-- 純色階段用 `Sprite2D` + 16×16 白圖 + `modulate`（hero 黃/近戰紅/caster 紫/item 綠），
+- 純色階段用 `Sprite2D` + 16×16 白圖 + `modulate`（hero 黃/NPC 紅/item 綠），
   之後換貼圖只動 texture。
-- caster/近戰外觀區分：`get_actors()` 帶 `is_caster` 欄位
-  （core 已有 NpcAiComponent.is_caster，session_log.md NPC 智能升級條目）。
+- 外觀區分：現況只有 hero（ControllerKind::Player）與追擊 NPC（ControllerKind::Self）。
+  若未來引入施法者等 actor 類型，`get_actors()` 再補對應欄位即可
+  （現已無 caster/NpcAiComponent，那是重構前的概念）。
 
 ### 3.3 Camera2D 平滑跟隨（優先序：高，便宜）
 依賴：godot_zone/map_view.gd `_refresh_display`。
@@ -58,8 +61,9 @@ Godot 4.3+ 用 `TileMapLayer`（單層節點，舊 `TileMap` 已 deprecated）�
   目標仍設英雄格中心——一行屬性就把 snap 變平滑，**先做這個**。
 - `limit_left/top/right/bottom` 設為地圖像素邊界（`get_map_width()*CELL_PX`），
   邊緣不再露黑底。
-- 多角色時代（04）：攝影機目標 = 「目前 `waiting_actor` 的角色」，
-  切換角色時用 `create_tween().tween_property(camera, "position", target, 0.25)`
+- 現況單一玩家角色：攝影機目標固定為英雄格（`get_hero_x/y()`）。
+  若未來引入「多名可操控角色」擴充（04），攝影機目標改為「目前等待輸入的角色」，
+  切換時用 `create_tween().tween_property(camera, "position", target, 0.25)`
   做一次性飛行，平時恢復 smoothing 跟隨。
 - 之後加 `camera.zoom` 滾輪縮放（clamp 0.5～2.0）。
 
@@ -82,7 +86,7 @@ Godot 4.3+ 用 `TileMapLayer`（單層節點，舊 `TileMap` 已 deprecated）�
 
 ```
 // 結構化匯出（取代逐 getter 拼湊）
-Array get_actors() const;      // [{eid,x,y,hp,max_hp,is_hero,is_caster,energy,speed,...}]
+Array get_actors() const;      // [{eid,x,y,hp,max_hp,is_hero}]（未來擴充再補欄位）
 Array get_items()  const;      // [{eid,x,y,kind}]
 PackedByteArray get_fov_grid() const;   // w*h，0=未知 1=已探索 2=可見
 int get_tile(int x, int y) const;       // 0=wall 1=floor 2=stair（鋪 TileMap 用）

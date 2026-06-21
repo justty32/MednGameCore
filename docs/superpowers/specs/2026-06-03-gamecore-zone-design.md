@@ -6,6 +6,23 @@
 
 ---
 
+> ## ⚠ 狀態更新（2026-06-21）：本文部分內容已被取代（superseded）
+>
+> 本文 §7「時間驅動 Actor Poll 構想」所設計的**對稱 `tick_actor` / `OngoingActionComponent` / 經過時間（pass_time）能量演繹**回合迴圈路線，以及後續（2026-06-07）演進出的「order 表 + 三排程器（A 能量瞬發 / B 能量＋channel / C 純 tick）＋ ActionDef/技能 ＋ DoT/zone_effects」整套系統，已於 **2026-06-21 回合系統重構中整體移除**。
+>
+> 最終**沒有採用**這條路線。實際採用的是**最簡單的傳統回合制 `TurnEngine`**（見 `src/core/turn/turn_engine.{h,cpp}`、`src/core/turn/apply_action.{h,cpp}`）：
+> - actor 一條 `std::list`，**順序＝加入序**（hero 最先加入、每回合最先行動）；
+> - 每 actor 本回合首次輪到時 `ActPointComponent` 重設 `kActPointFull = 1000`、行動後歸 0（act_point 為未來多次行動預留）；
+> - 操控者分派靠 `ControllerComponent.kind`：`Player` 阻塞等 `submit()`、`Self`/`Faction` 立即 `decide()`；
+> - NPC AI ＝ 最精簡的 `decide_chase`（朝目標走一格、相鄰即撞擊攻擊）；
+> - **沒有**能量/pass_time 時間模型、沒有 `OngoingActionComponent`、沒有多回合詠唱（channel）、沒有 `display_chunk`、沒有技能/DoT/zone_effects。
+>
+> 能量制／先攻／詠唱／技能／狀態效果等已重新定位為「**建立在最簡 TurnEngine 之上的未來可選擴充主題**」（見 `docs/ideas/`），不是現有程式。
+>
+> **§1–§6**（三層架構定位、保留/刪除清單、目錄結構、ECS 基底、命名規則、Godot 前端骨架）大致仍反映 zone 專案的基礎結構，可作參考；**§7 以下整體保留作歷史設計記錄**，閱讀時請以本註記與「真相基準（已實作 TurnEngine）」為準，不要當成現況。
+
+---
+
 ## 1. 目標定位
 
 `derived/gamecore-zone/` 是 gamecore / medps **三層世界架構**中的**第三層——區域層（Area Layer，ZoneType::Area, z=3）**的實作。
@@ -167,6 +184,8 @@ struct ZoneContext {
 ---
 
 ## 7. 時間驅動 Actor Poll 構想（2026-06-03）
+
+> **⚠ superseded（2026-06-21）：本節整體未被採用。** 不論是下方 7.x 的單 hero `tick_actor`/`OngoingActionComponent`/pass_time 能量模型，或 2026-06-07 callout 改走的 order 表多角色模型，最終都已於 2026-06-21 回合系統重構中移除，改為最簡 `TurnEngine`（加入序＋act_point＋Player 阻塞＋Self `decide_chase`）。詳見檔首狀態更新。以下保留作歷史設計脈絡。
 
 > 以下為使用者提出的設計方向，尚未實作。
 

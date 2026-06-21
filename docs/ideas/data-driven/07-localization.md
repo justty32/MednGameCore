@@ -1,7 +1,12 @@
 # Localization：訊息字串與事件文字分層
 
-> 日期：2026-06-11
-> 定位：記錄何時、如何把 trace / combat log / UI 字串從程式碼抽出，避免太早為 debug 字串背包袱。
+> 日期：2026-06-11（內容於 2026-06-21 回合系統重構後校正）
+> 定位：記錄何時、如何把 trace / combat log / UI 字串從程式碼抽出，避免太早為 debug 字串背包袱。**遠期方向，受重構影響小。**
+
+> **狀態（2026-06-21）**：本文為遠期方向。下文的「火球/火傷」僅為**結構化事件
+> 的示意**，非現有內容——目前的 `ZoneEvent`（`apply_action` 產出）只有撞牆/撞 actor/
+> actor 死亡/拾取道具/抵達下樓梯等，沒有技能或傷害類型。技能類事件要等 01 的
+> 資料驅動動作重新引入後才會出現。
 
 ---
 
@@ -16,7 +21,8 @@
 
 ## 2. 事件先結構化，文字後生成
 
-不要讓 core 直接吐最終玩家文字：
+不要讓 core 直接吐最終玩家文字（`ZoneEvent` 已是結構化的，沿用此原則）。
+以一個未來的傷害事件為例：
 
 ```text
 { type: "damage", actor: 1, target: 2, amount: 5, damage_type: "fire" }
@@ -36,13 +42,14 @@
 {
   "locale": "zh-TW",
   "strings": {
-    "action.fireball.name": "火球",
+    "proto.grunt.name": "雜兵",
+    "item.health_potion.name": "治療藥水",
     "event.damage": "{actor} 對 {target} 造成 {amount} 點{damage_type}傷害"
   }
 }
 ```
 
-ActionDef / PrototypeDef 只存 `name_key`，不直接存顯示文字。
+PrototypeDef（及未來的 ActionDef）只存 `name_key`，不直接存顯示文字。
 
 ## 4. 何時做
 

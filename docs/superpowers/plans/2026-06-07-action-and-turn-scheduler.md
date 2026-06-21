@@ -1,5 +1,13 @@
 # Action 與可切換回合排程器 — 實作計畫
 
+> ## ⚠ 狀態更新（2026-06-21）：本計畫已被取代（superseded）
+>
+> 本計畫實作的「**A/B/C 三排程器 ＋ `Action{kind,param,weight}` ＋ `ActionEffects`/`EffectRegistry` ＋ `TurnWorld` ＋ `make_scheduler` 工廠 ＋ 共用 components（`PlayerControlled`/`Energy`/`OngoingAction`）**」整套交付物，已於 **2026-06-21 回合系統重構中整體移除**。本計畫列出的檔案——`turn_scheduler.h`、`turn_world.h`、`energy_instant_scheduler.*`、`energy_channel_scheduler.*`、`tick_remaining_scheduler.*`、`make_scheduler.cpp`、`action_effects.h`、`player_controlled_component.h`、`energy_component.h`、`ongoing_action_component.h`、`test_turn_scheduler.cpp`——**皆已刪除**。
+>
+> 實際採用的是最簡 `TurnEngine`（`src/core/turn/turn_engine.{h,cpp}`、`apply_action.{h,cpp}`）：actor 一條 `std::list`（順序＝加入序）、`ActPointComponent`、`ControllerComponent` 分派（Player 阻塞 / Self `decide_chase`）；`Action` 僅 `{kind,param}`，`ActionKind` 只有 `Idle/Move/Wait`（無 weight、無 Attack/Cast/channel）。測試改為 `test_turn_engine.cpp`（含於現況 doctest 29 case / 93 assertion 全綠）。
+>
+> 能量制／先攻／詠唱（channel）／速度模型已重新定位為「建立在最簡 TurnEngine 之上的未來可選擴充」（見 `docs/ideas/`）。以下保留作歷史實作記錄，所有 File Structure / Tasks / 驗收 字樣均不代表現況。
+
 > **For agentic workers:** 依 superpowers:executing-plans 逐任務實作。本計畫聚焦**純 core 可測試交付物**（不接 Godot）：Action 詞彙 + 三排程器 + ctest。ZoneWorld 接線與真實 Move/Attack 效果列為後續。
 
 **Goal:** 把 spec（`specs/2026-06-07-action-and-turn-scheduler-design.md`）的共用詞彙與 A/B/C 三排程器實作成 godot-free 的 `zone_core` 程式碼，並以 doctest 驗證 §8 行為矩陣。

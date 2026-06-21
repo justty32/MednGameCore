@@ -39,3 +39,16 @@
 - 跨層時間轉換、NPC 累積時間上限（暫緩）
 
 **核心上下文**：設計真相層在 `docs/superpowers/specs/2026-06-03-gamecore-zone-design.md` §7 + 同目錄 turn-loop-sketch.cpp。草稿與設計皆未 commit。
+
+---
+
+## 2026-06-21 — 回合系統重構為最簡 TurnEngine
+
+- **接續背景**：Linux 因前次無上限 `-j` 同時啟動約 541 個編譯程序耗盡 60GiB RAM 觸發 OOM 強制重啟後接續。**建置鐵則：務必限制並行（如 `-j4`）。**
+- **大幅簡化**：把「三排程器(A 能量瞬發/B 能量+詠唱/C 純 tick) + JSON 資料化技能 + 詠唱 channel + DoT 持續效果 + 能量/行動值時間模型 + EffectRegistry/ActionLibrary」整套實驗**整體移除**，重建為最傳統教科書式回合制（淨刪約 1300 行）。先前 docs/ideas「三排程器收斂到 B」被更激進的決定取代：連 B 也拿掉，能量制/先攻/詠唱/技能/狀態效果全改列為未來可選擴充主題。
+- **新增 core**：`turn/turn_engine.{h,cpp}`（actor list 順序＝加入序，hero 最先；begin_round→step 到 RoundDone；玩家阻塞 submit、Self/Faction 立即 decide+resolve；EngineCtx 不持有 registry 保持可測）、`turn/apply_action.{h,cpp}`（Move 撞牆/撞擊攻擊/自動拾取/下樓梯、Wait/Idle 消耗回合、被殺只發 ActorDied 不在此 destroy；decide_chase NPC 追擊）；元件 `components/controller_component.h`（ControllerComponent: Player/Self/Faction，含 cereal）、`components/act_point_component.h`（ActPointComponent: 每回合首次輪到重設 1000、行動後歸 0）。`serialize/all_components.h` 加入兩新元件、移除 EnergyComponent/OngoingActionComponent/PlayerControlledComponent。
+- **移除**：`turn/{turn_scheduler,turn_world,energy_instant_scheduler,energy_channel_scheduler,tick_remaining_scheduler,make_scheduler,action_def,action_effects,zone_effects,timed_effect,npc_brain}.*`、`data/actions.json` 技能(fireball/heal/meteor/venom)、DoT/nova/world clock、施法者 NPC；測試刪 `test_npc_brain/test_turn_scheduler/test_zone_effects.cpp`、新增 `test_turn_engine.cpp`。
+- **修真 bug**：gbind 漏 include `move_dir.h` 導致編譯錯誤，補回。
+- **前端**：ZoneWorld 新介面 next_round/player_move/player_wait/is_waiting_player/round_in_progress，移除 move/wait_turn/set·get_scheduler_mode/submit_hero_*/step_scheduler/hero_is_waiting/get_world_clock 等；map_view.gd 改直接呼叫 `player_move()`/`player_wait()`（移除 TAB 切排程器/計時器推進/C·H·M·V 技能/[ ]調速/_pending_input），保留 F5存·F9讀/L·K trace/R重開。CMake `zone_gd` POST_BUILD `copy_if_different` 把 `libzone_gd.so` 複製到 `godot_zone/bin/`（該目錄 gitignore）。
+- **驗證**：doctest **29 案 / 93 斷言全綠**（test_turn_engine 涵蓋加入序＝回合序、act_point 重設 1000、玩家阻塞 submit 後續跑、撞 actor 致死發 ActorDied）；headless `godot-mono --headless -s res://verify.gd` → **VERIFY PASSED**（需先 `--headless --import`）；Godot 4.6 mono、zone core 0.0.1-alpha、60×40 地圖、save/load round-trip 綠。
+- **commit（本地 main，未 push）**：`e9ed694` refactor(turn) 重建最傳統回合制引擎移除能量排程系統 / `b7712f2` feat(godot) 前端改用新回合制介面 / `b54faef` build(gbind) zone_gd 建置後自動複製 .so/.dll 到 godot_zone/bin/。

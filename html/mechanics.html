@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <script>document.documentElement.className="js";</script>
 <title>機制詳解 — gamecore-zone</title>
-<meta name="description" content="gamecore-zone 機制：三種回合排程器、技能參數、DoT 結算、NPC 決策。">
+<meta name="description" content="gamecore-zone 機制：TurnEngine 回合引擎、apply_action 結算（移動／撞牆／撞擊攻擊／拾取／下樓梯）、NPC 追擊 AI。">
 <link rel="stylesheet" href="assets/style.css">
 </head>
 <body>
@@ -29,133 +29,113 @@
     <p class="eyebrow">機制詳解</p>
     <h2>內部到底怎麼運作</h2>
     <p class="lead">
-      四塊核心機制：<strong>三種排程器</strong>差在哪、<strong>技能</strong>怎麼用資料拼出來、
-      <strong>DoT</strong> 何時結算、<strong>NPC</strong> 怎麼決定下一步。每塊都標了對應的測試案例方便對照。
+      三塊核心機制：<strong>TurnEngine</strong> 怎麼跑一輪、<strong>apply_action</strong> 把一個動作結算成什麼、
+      <strong>NPC</strong> 怎麼決定下一步。這是刻意做到最精簡的傳統回合制地基。
     </p>
   </div>
 
-  <!-- 排程器 -->
+  <!-- TurnEngine -->
   <section>
-    <p class="eyebrow">招牌功能</p>
-    <h2>三種回合排程器（TAB 切換）</h2>
-    <p>同一個世界，三套時間模型。執行中按 <span class="kbd">TAB</span> 即時切換，直接比較同場戰鬥下的行為差異。</p>
+    <p class="eyebrow">核心</p>
+    <h2>TurnEngine：一輪怎麼跑</h2>
+    <p>維護一條 actor 的 <code>std::list&lt;entt::entity&gt;</code>，<strong>順序＝加入序</strong>（hero 最先加入，故每回合最先行動）。<code>begin_round()</code> 後反覆 <code>step(ctx)</code> 直到 <code>RoundDone</code>。</p>
 
     <div class="grid c3" style="margin:22px 0;">
       <div class="card cyan reveal">
-        <span class="k">A</span>
-        <div class="ico">⚡</div>
-        <h3>EnergyInstant</h3>
-        <p>純 ToME4 風格：每 tick 給能量，能量夠就<strong>瞬間出手</strong>並扣行動值成本。沒有詠唱概念，最單純。</p>
+        <span class="k">1</span>
+        <div class="ico">≡</div>
+        <h3>actor list ＝ 加入序</h3>
+        <p>沒有先攻、沒有速度排序。誰先 <code>add_actor</code> 誰先動。<code>remove_actor</code> 安全處理 cursor，死亡才從名單移除。</p>
       </div>
       <div class="card fire reveal">
-        <span class="k">B ★</span>
-        <div class="ico">⟳</div>
-        <h3>EnergyChannel</h3>
-        <p>能量排程 <strong>＋ 可打斷的詠唱（channel）</strong>。weight&gt;1 的動作要跨多回合蓄力，蓄力中可被新指令打斷。<strong>最完整</strong>，前端預設。</p>
+        <span class="k">2</span>
+        <div class="ico">◆</div>
+        <h3>act_point 行動值</h3>
+        <p>每 actor 本回合<strong>首次輪到</strong>時 <code>ActPointComponent.value</code> 重設為 <code>kActPointFull = 1000</code>，行動後歸 0。目前一回合一次，為未來依成本多次行動預留。</p>
       </div>
       <div class="card heal reveal">
-        <span class="k">C</span>
-        <div class="ico">⏱</div>
-        <h3>TickRemaining</h3>
-        <p>沒有能量概念：每回合整步前進，<strong>跳到下一個結算點</strong>。最容易推理「誰下一個動」。</p>
+        <span class="k">3</span>
+        <div class="ico">⏸</div>
+        <h3>依操控者分派</h3>
+        <p>看 <code>ControllerComponent.kind</code>：<strong>Player</strong> 回 <code>WaitingPlayer</code> 暫停等 <code>submit()</code>；<strong>Self／Faction</strong> 立即 <code>ctx.decide()</code> 取動作並 <code>ctx.resolve()</code>。</p>
       </div>
     </div>
 
     <table class="tbl reveal">
-      <thead><tr><th>面向</th><th>A 瞬發</th><th>B 詠唱</th><th>C tick</th></tr></thead>
+      <thead><tr><th>概念</th><th>內容</th></tr></thead>
       <tbody>
-        <tr><td>時間模型</td><td>能量行動值</td><td>能量行動值</td><td>純回合 tick</td></tr>
-        <tr><td>速度差</td><td>✓ 快角約兩倍出手</td><td>✓</td><td>✗（整步）</td></tr>
-        <tr><td>多回合詠唱</td><td>✗ 瞬發</td><td>✓ weight 回合</td><td>✓ remaining</td></tr>
-        <tr><td>可打斷</td><td>—</td><td>✓ 覆寫進行中動作</td><td>✓</td></tr>
-        <tr><td>對應測試</td><td>速度差案</td><td>channel／打斷案</td><td>玩家阻塞案</td></tr>
+        <tr><td>StepResult</td><td><code>Acted</code> / <code>WaitingPlayer</code> / <code>RoundDone</code></td></tr>
+        <tr><td>EngineCtx</td><td><code>registry&amp; reg</code> ＋ <code>decide</code> / <code>resolve</code> / <code>trace</code> 三個 callback。registry 不由引擎持有，保持引擎純粹可測。</td></tr>
+        <tr><td>list 維護</td><td><code>add_actor</code>（重複略過）/ <code>remove_actor</code> / <code>contains</code> / <code>clear</code> / <code>order()</code> / <code>size()</code></td></tr>
+        <tr><td>Action</td><td><code>{ ActionKind kind; int param; }</code>，工廠 <code>idle()/wait()/move(dir)</code>。<strong>沒有 Attack、沒有技能／詠唱</strong>。Move 時 param 是方向編碼。</td></tr>
       </tbody>
     </table>
 
     <div class="note">
-      <b class="t">共通不變核心</b>
-      三版都成立：<strong>玩家阻塞</strong>＝角色 idle 且無指令時世界停住等輸入；<strong>打斷</strong>＝覆寫 OngoingAction（沒有指令佇列）；
-      <strong>「繼續」不是一個 Action</strong>，而是 step() 不帶新指令。多角色時依序阻塞，逐一等指令。
+      <b class="t">玩家阻塞</b>
+      輪到 Player 操控者時 <code>step()</code> 回 <code>WaitingPlayer</code> 暫停（即 act() 阻塞等玩家），等 <code>submit(e, action)</code> 後才續跑。
+      多角色時依加入序逐一行動；Self／Faction（Faction 暫等同 Self）則立即解算，不暫停。
     </div>
   </section>
 
-  <!-- 技能 -->
+  <!-- apply_action -->
   <section>
-    <p class="eyebrow">資料驅動</p>
-    <h2>技能＝一組可組合原語</h2>
-    <p>沒有一個技能是寫死的。每個技能由 <code>data/actions.json</code> 的欄位拼出來，C++ 端只認得這幾種原語：</p>
-
-    <div class="cmd-label">data/actions.json — fireball 條目</div>
-<pre data-copy>{
-  <span class="v">"name"</span>: <span class="p">"fireball"</span>, <span class="v">"weight"</span>: 3,   <span class="c">// 詠唱 3 回合</span>
-  <span class="v">"nova_damage"</span>: 4, <span class="v">"radius"</span>: 1,    <span class="c">// 對周圍 1 格 nova 4 傷</span>
-  <span class="v">"dot_turns"</span>: 3, <span class="v">"dot_power"</span>: 2, <span class="v">"dot_kind"</span>: 0,  <span class="c">// 殘留燃燒 3 回合</span>
-  <span class="v">"self_heal"</span>: 0, <span class="v">"self_regen_turns"</span>: 0
-}</pre>
+    <p class="eyebrow">結算</p>
+    <h2>apply_action：一個動作變成什麼</h2>
+    <p><code>apply_action(reg, map, self, action, events)</code> 把單一 Action 結算到世界並發出 <code>ZoneEvent</code>。沒有獨立攻擊指令——<strong>移動進入有 actor 的格子就是攻擊</strong>。</p>
 
     <table class="tbl reveal">
-      <thead><tr><th>技能</th><th>鍵</th><th>weight</th><th>效果</th></tr></thead>
+      <thead><tr><th>動作 / 情況</th><th>結果</th><th>發出的事件</th></tr></thead>
       <tbody>
-        <tr><td>fireball</td><td><span class="kbd">C</span></td><td>3</td><td>nova 4（r1）＋燃燒 3 回合</td></tr>
-        <tr><td>heal</td><td><span class="kbd">H</span></td><td>2</td><td>瞬補 8 ＋ Regen buff 3 回合（可見）</td></tr>
-        <tr><td>meteor</td><td><span class="kbd">M</span></td><td>4</td><td>大範圍 nova 5（r2）＋燃燒 2 回合</td></tr>
-        <tr><td>venom</td><td><span class="kbd">V</span></td><td>2</td><td>nova 1 ＋中毒 5 回合（毒系 DoT）</td></tr>
-        <tr><td>smite</td><td>—</td><td>1</td><td>nova 6，瞬發無 DoT</td></tr>
-        <tr><td>npc_flame</td><td>NPC</td><td>1</td><td>施法者 NPC 專用 nova 3 ＋燃燒</td></tr>
+        <tr><td>Move → 撞牆 / 出界</td><td>停住不動</td><td><code>BumpedWall</code></td></tr>
+        <tr><td>Move → 撞到 actor（致死）</td><td>扣 <code>CombatStatsComponent.attack</code> 傷害，目標死亡</td><td><code>ActorDied</code></td></tr>
+        <tr><td>Move → 撞到 actor（未死）</td><td>扣傷害，目標存活</td><td><code>BumpedActor</code></td></tr>
+        <tr><td>Move → 空格（踩到道具）</td><td>移動，自動拾取 health_potion 回血</td><td><code>ItemPickedUp</code></td></tr>
+        <tr><td>Move → 踩到下樓梯</td><td>移動，觸發下樓</td><td><code>ReachedStairDown</code></td></tr>
+        <tr><td>Wait / Idle</td><td>消耗回合，不做事</td><td>—</td></tr>
       </tbody>
     </table>
 
     <div class="note warn">
-      <b class="t">後備機制</b>
-      若 <code>actions.json</code> 載入失敗，C++ 會呼叫 <code>load_defaults()</code> 內建一份備援技能庫，遊戲不會因缺檔崩潰。
-      這兩條路徑都有測試覆蓋（JSON 載入案 + 後備案）。
-    </div>
-  </section>
-
-  <!-- DoT -->
-  <section>
-    <p class="eyebrow">持續效果</p>
-    <h2>DoT：每回合開始結算</h2>
-    <p>持續效果掛在 <code>TimedEffectsComponent</code> 上，三種類型：</p>
-    <div class="grid c3">
-      <div class="card blood reveal"><div class="ico">🔥</div><h3>Burning 燃燒</h3><p>火球／隕石殘留。每回合扣血，過期消失。</p></div>
-      <div class="card cast reveal"><div class="ico">☠</div><h3>Poison 中毒</h3><p>venom 施加。較長持續、低額逐回合傷害。</p></div>
-      <div class="card heal reveal"><div class="ico">✚</div><h3>Regen 回復</h3><p>heal 附帶。每回合回血，是個正向 DoT。</p></div>
+      <b class="t">死亡由呼叫端統一移除</b>
+      被殺的目標<strong>只發 <code>ActorDied</code> 事件、不在此 destroy</strong>，由呼叫端（ZoneWorld）統一從 registry 與 actor list 移除。
+      這避免了「被殺者在同一輪後續又被存取」的越界問題。<code>events</code> 參數可為 null（純 core 測試時可不收事件）。
     </div>
 
-    <div class="note bug" style="margin-top:22px;">
-      <b class="t">這裡藏過一個真 bug</b>
-      DoT 致死會 <code>destroy</code> 任何 actor——<strong>包含英雄</strong>。早期版本英雄被 DoT 燒死後，restart 又 destroy 一次造成<strong>雙重 destroy 崩潰</strong>。
-      修法：<code>die()</code> 保護 PlayerControlled 不被消滅（只觸發 game over），三排程器在 actor 取得回合前都重檢 <code>reg.valid</code> 防越界。
-    </div>
-
-    <p style="margin-top:16px;">結算時機由 <code>TurnWorld.on_actor_turn</code> hook 驅動：actor 一拿到回合，先跑 <code>tick_timed_effects</code>（扣血／過期／致死發 ActorDied），再執行它的動作。</p>
+    <p style="margin-top:16px;">方向編碼在 <code>move_dir.h</code>：<code>encode_dir(dx,dy)</code> / <code>decode_dir(p,dx,dy)</code>，方向 0..8（八方向＋原地）。</p>
   </section>
 
   <!-- NPC -->
   <section style="border-bottom:0;">
     <p class="eyebrow">敵人 AI</p>
     <h2>NPC 怎麼決定下一步</h2>
-    <p>核心邏輯在 <code>npc_brain.cpp</code> 的 <code>decide_chase()</code>，放在 core 所以能直接 ctest（不用開 Godot）。</p>
+    <p>核心邏輯在 <code>apply_action.cpp</code> 的 <code>decide_chase()</code>，放在 core 所以能直接用 doctest（不用開 Godot）。這是最精簡的 NPC 腦。</p>
 
     <div class="term reveal">
-      <div class="term-bar"><span class="lights"><i class="l-r"></i><i class="l-y"></i><i class="l-g"></i></span> decide_chase 決策樹</div>
-<div class="term-body"><span class="hl">每個 NPC 取得回合時：</span>
+      <div class="term-bar"><span class="lights"><i class="l-r"></i><i class="l-y"></i><i class="l-g"></i></span> decide_chase 決策</div>
+<div class="term-body"><span class="hl">每個 NPC（ControllerKind::Self）取得回合時：</span>
 
-  與英雄相鄰？
-   ├─ 是 ──┬─ 一般 NPC → <span class="en">撞擊攻擊</span>（朝英雄走＝攻擊）
-   │       └─ 施法者   → 放 <span class="at">npc_flame</span> nova 技能
+  有目標（英雄）嗎？
+   ├─ 沒有 ── <span class="hl">Action::wait()</span>（原地等待）
    │
-   └─ 否 ──── <span class="hl">朝英雄方向移動一格</span>（追擊）
+   └─ 有 ──── <span class="hl">朝 target 移動一格</span>
+                └─ 相鄰時這一步就是 <span class="en">撞擊攻擊</span>
+                   （移動進入英雄的格子＝攻擊）
 
-<span class="wl"># 半數 NPC 在 spawn 時被設為 caster（is_caster）</span>
-<span class="wl"># 速度差：caster 80 / 近戰 130 → 能量面板看得到行動值差</span></div>
+<span class="wl"># 沒有施法者、沒有 nova、沒有速度差——就是純追擊</span>
+<span class="wl"># ZoneWorld 的 npc_decide(e) 直接呼叫 decide_chase 追英雄</span></div>
     </div>
 
     <div class="note">
       <b class="t">實機驗證過</b>
-      headless demo：英雄原地等待 40 回合，被 NPC 圍殺 hp 20→0，證實追擊 + 施法者 nova 一起運作。
-      對應 4 個 <code>test_npc_brain</code> 測試案（方向正確／相鄰撞擊／施法者放技能／遠距仍移動）。
+      headless demo：英雄原地等待，NPC 一路追擊逼近並撞擊攻擊，hero HP 下降，證實追擊與撞擊攻擊一起運作。
+      <code>test_turn_engine.cpp</code> 涵蓋：加入序＝回合序、每 actor act_point 重設 1000、玩家阻塞 submit 後續跑、撞 actor 致死發 ActorDied。
+    </div>
+
+    <div class="note">
+      <b class="t">未來可選擴充</b>
+      能量制／先攻排序／詠唱／資料化技能／狀態效果（DoT）／施法者 NPC 等，都是<strong>建立在這個最簡 TurnEngine 之上的未來方向</strong>，
+      設計探索保留在 <code>docs/ideas/</code>，目前都不在程式中。
     </div>
 
     <div class="hero-cta" style="margin-top:30px;">

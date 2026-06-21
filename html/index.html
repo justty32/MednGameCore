@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <script>document.documentElement.className="js";</script>
 <title>gamecore-zone — 專案導覽</title>
-<meta name="description" content="gamecore-zone：C++ 回合制遊戲核心。可切換回合排程器、效果/DoT/JSON 技能、NPC 追擊 AI，透過 GDExtension 接到 Godot。">
+<meta name="description" content="gamecore-zone：C++ 寫的最精簡傳統回合制遊戲核心。一個英雄、會追擊的 NPC、撞擊攻擊、拾道具、下樓梯，透過 GDExtension 接到 Godot。">
 <link rel="stylesheet" href="assets/style.css">
 </head>
 <body>
@@ -29,11 +29,11 @@
   <section class="hero" style="border-bottom:0;">
     <div>
       <span class="tag">AREA LAYER · 0.0.1-alpha</span>
-      <h1>一顆會<span class="fire">跑回合</span>的<br>遊戲核心</h1>
+      <h1>一顆<span class="fire">最精簡</span>的<br>傳統回合制核心</h1>
       <p class="lead">
         <strong>gamecore-zone</strong> 是 gamecore 三層架構（World／Region／Area）的最底層——<b>區域層</b>。
         它用 C++ 寫的 ECS 跑出一張地圖、一個英雄、一群會追你的 NPC，
-        並提供<strong>三種可即時切換的回合排程器</strong>，全部接到 Godot 前端可以實機操作。
+        提供<strong>乾淨的傳統回合制地基</strong>（移動、撞擊攻擊、拾道具、下樓梯），全部接到 Godot 前端可以實機操作。
       </p>
       <div class="hero-cta">
         <a class="btn primary" href="testing.html">▶ 我要怎麼跑起來看</a>
@@ -45,7 +45,7 @@
     <div class="term reveal">
       <div class="term-bar">
         <span class="lights"><i class="l-r"></i><i class="l-y"></i><i class="l-g"></i></span>
-        map_view.tscn — 排程器 [B] EnergyChannel
+        map_view.tscn — TurnEngine
       </div>
 <div class="term-body"><span class="wl">################################</span>
 <span class="wl">#</span>......<span class="en">g</span>.........<span class="it">!</span>.........<span class="wl">#</span>
@@ -55,30 +55,31 @@
 <span class="wl">#</span>....<span class="en">g</span>...............<span class="en">g</span>....<span class="wl">#</span>
 <span class="wl">################################</span>
 
-<span class="hl">turn</span> 12  <span class="hl">clock</span> 480t  <span class="hl">floor</span> 1
-<span class="at">@</span> hero   hp 18/20  energy 130(spd130)
-<span class="en">g</span> #3a1f  hp  6/8   ▸channel npc_flame 2/3
-<span class="en">g</span> #3b04  hp  8/8   burning(2) ▱▱</div>
+<span class="hl">turn</span> 12  <span class="hl">floor</span> 1  <span class="hl">npc</span> 4
+<span class="at">@</span> hero   hp 18/20
+<span class="en">g</span> #3a1f  hp  6/8
+<span class="en">g</span> #3b04  hp  8/8</div>
     </div>
   </section>
 
   <!-- 一句話 -->
   <section>
     <p class="eyebrow">這是什麼</p>
-    <h2>把「時間怎麼流動」做成可以換的零件</h2>
+    <h2>一個乾淨、教科書式的回合制地基</h2>
     <p class="lead">
-      大部分回合制遊戲把時間規則寫死。這個核心反過來：<strong>同一份遊戲世界，三套不同的時間模型隨按 <span class="kbd">TAB</span> 切換</strong>，
-      讓你能直接比較「能量瞬發」「能量＋詠唱」「純 tick」三種排程在同一場戰鬥下的差異。所有戰鬥效果、持續傷害、技能都是資料驅動的。
+      不堆機制、不搶先做花俏系統。這個核心刻意做到<strong>最傳統、最精簡</strong>：一條按加入序排列的 actor 名單、
+      玩家輪到時阻塞等輸入、NPC 朝你追擊、撞進有人的格子＝攻擊。能量制／詠唱／技能／狀態效果都被刻意移除，
+      留作<strong>建立在這個地基之上的未來擴充</strong>。
     </p>
 
     <div class="stats reveal">
-      <div class="stat"><div class="n">3</div><div class="l">可切換排程器</div></div>
-      <div class="stat"><div class="n">49</div><div class="l">ctest 測試案例</div></div>
-      <div class="stat"><div class="n">168</div><div class="l">斷言全綠</div></div>
-      <div class="stat"><div class="n">6</div><div class="l">JSON 技能</div></div>
+      <div class="stat"><div class="n">1</div><div class="l">英雄（Player）</div></div>
+      <div class="stat"><div class="n">29</div><div class="l">doctest 測試案例</div></div>
+      <div class="stat"><div class="n">93</div><div class="l">斷言全綠</div></div>
+      <div class="stat"><div class="n">60×40</div><div class="l">BSP 地圖</div></div>
     </div>
     <p style="font-family:var(--code);font-size:12.5px;color:var(--ink-faint);margin-top:10px;">
-      headless VERIFY PASSED（三模式 + 詠唱 + 技能）· Godot 4.6 mono · zone core 0.0.1-alpha · 60×40 地圖 · save/load round-trip 綠
+      headless VERIFY PASSED · Godot 4.6 mono · zone core 0.0.1-alpha · 60×40 地圖 · save/load round-trip 綠
     </p>
   </section>
 
@@ -89,33 +90,33 @@
     <div class="grid c3">
       <div class="card cyan reveal">
         <div class="ico">⟳</div>
-        <h3>三種回合排程器</h3>
-        <p>A 能量瞬發、B 能量＋可打斷詠唱（最完整）、C 純 tick。執行中按 TAB 即時切換比較。</p>
+        <h3>TurnEngine 回合引擎</h3>
+        <p>一條按<strong>加入序</strong>排的 actor 名單，<code>begin_round()</code> 後反覆 <code>step()</code> 到回合結束。純 core、不持有 registry，好測。</p>
       </div>
       <div class="card fire reveal">
-        <div class="ico">✦</div>
-        <h3>資料化技能</h3>
-        <p>火球／治療／隕石／劇毒等技能寫在 <code>data/actions.json</code>，由可組合原語（位移／nova／DoT／自療）拼出。</p>
+        <div class="ico">⚔</div>
+        <h3>撞擊攻擊</h3>
+        <p>沒有獨立的攻擊指令：<strong>移動進入有 actor 的格子＝攻擊</strong>，扣攻擊力傷害，致死發 ActorDied。</p>
       </div>
       <div class="card cast reveal">
-        <div class="ico">☣</div>
-        <h3>持續效果 DoT</h3>
-        <p>燃燒、中毒、回復在每回合開始結算；致死會發 ActorDied 事件，nova 會對生還者殘留燃燒。</p>
+        <div class="ico">◆</div>
+        <h3>act_point 行動值</h3>
+        <p>每 actor 本回合首次輪到時 <code>ActPointComponent</code> 重設為 1000、行動後歸 0。為「未來依成本行動多次」預留。</p>
       </div>
       <div class="card blood reveal">
-        <div class="ico">⚔</div>
+        <div class="ico">⌖</div>
         <h3>NPC 追擊 AI</h3>
-        <p>NPC 朝英雄移動、相鄰即撞擊攻擊；半數是施法者，逼近就放 nova 技能圍殺。</p>
+        <p><code>decide_chase()</code>：朝英雄移動一格，相鄰即撞擊攻擊；無目標則等待。最精簡的敵人腦。</p>
       </div>
       <div class="card heal reveal">
         <div class="ico">◫</div>
         <h3>診斷面板 + Trace</h3>
-        <p>逐 actor 傾印 HP／能量／進行中動作／所有持續效果；trace 管線把每件事發生當下吐成文字。</p>
+        <p>傾印逐 actor 的 HP、回合數、樓層、NPC 數；trace 管線把每件事發生當下吐成文字。</p>
       </div>
       <div class="card gold reveal">
         <div class="ico">⇄</div>
         <h3>GDExtension 接線</h3>
-        <p>C++ 核心編成原生擴充，GDScript 前端用 submit／step 驅動；存讀檔 round-trip 已驗證。</p>
+        <p>C++ 核心編成原生擴充，GDScript 前端按一鍵＝英雄行動一次＋整輪 NPC；存讀檔 round-trip 已驗證。</p>
       </div>
     </div>
   </section>
@@ -138,29 +139,24 @@
         <p>zone_gd 編譯成原生擴充，Godot headless VERIFY PASSED：60×40 地圖、save/load round-trip 全綠。</p>
       </div>
       <div class="tl reveal">
-        <div class="step">STEP 03 · 設計</div>
-        <h4>回合迴圈 §7 + Action 模型定案</h4>
-        <p>收斂出對稱 actor 模型與 order 表；定案 Action＝enum＋param＋weight、時間用 ToME4 能量、效果走可替換 on_channel／on_resolve。</p>
+        <div class="step">STEP 03 · 探索</div>
+        <h4>能量排程器實驗</h4>
+        <p>曾實驗「三種可切換排程器（能量瞬發／能量＋詠唱／純 tick）＋資料化技能＋DoT」。實驗證明設計空間，但對地基而言太重。</p>
       </div>
       <div class="tl reveal">
-        <div class="step">STEP 04 · 實作</div>
-        <h4>三排程器 + 真實效果</h4>
-        <p>純 core 寫出 A／B／C 三排程器與移動／撞牆／攻擊／拾取效果，接進 ZoneWorld（additive，不動既有 move）。</p>
+        <div class="step">STEP 04 · 前端</div>
+        <h4>GDExtension 接線打通</h4>
+        <p>zone_gd 編成原生擴充，map_view 把鍵盤接到核心、ASCII 畫面與 debug 面板成形，headless 驗證綠。</p>
       </div>
       <div class="tl reveal">
-        <div class="step">STEP 05 · 前端</div>
-        <h4>Timer 驅動 + 即時打斷 + Cast</h4>
-        <p>map_view 改 Timer 推進、輸入只 submit；新增詠唱技能與「詠唱中按移動＝即時打斷」。</p>
-      </div>
-      <div class="tl reveal">
-        <div class="step">STEP 06 · 系統</div>
-        <h4>DoT + JSON 技能 + NPC 智能</h4>
-        <p>持續傷害系統、actions.json 資料化技能、NPC 追擊與施法者；最終 ctest 49 案／168 斷言全綠。</p>
-      </div>
-      <div class="tl reveal">
-        <div class="step">STEP 07 · 工具</div>
+        <div class="step">STEP 05 · 工具</div>
         <h4>診斷 UI + Trace + 真 bug 修復</h4>
         <p>詳細 debug 面板與 trace log；修掉玩家致死雙重 destroy 崩潰、verify.gd 假通過、CJK 亂碼等真實 bug。</p>
+      </div>
+      <div class="tl reveal">
+        <div class="step">STEP 06 · 重構（2026-06-21）</div>
+        <h4>回合系統重構為最簡 TurnEngine</h4>
+        <p>刻意大幅簡化（淨刪約 1300 行）：整套能量排程器／詠唱／JSON 技能／DoT／nova 全部移除，重建為教科書式 <code>TurnEngine</code>＋<code>apply_action</code>＋<code>decide_chase</code>。前端改 next_round／player_move／player_wait。doctest 29 案／93 斷言全綠。</p>
       </div>
     </div>
   </section>
@@ -178,12 +174,12 @@
       <a class="card fire reveal" href="mechanics.html" style="text-decoration:none;color:inherit;">
         <div class="ico">⚙</div>
         <h3>機制詳解 →</h3>
-        <p>三排程器差在哪、技能參數表、DoT 怎麼結算、NPC 怎麼決策。想懂內部讀這個。</p>
+        <p>TurnEngine 怎麼跑一輪、apply_action 結算什麼、NPC 怎麼追擊決策。想懂內部讀這個。</p>
       </a>
       <a class="card heal reveal" href="testing.html" style="text-decoration:none;color:inherit;">
         <div class="ico">✓</div>
         <h3>測試與驗證 →</h3>
-        <p>怎麼 build、怎麼跑 ctest、怎麼 headless 驗證、怎麼實機操作與按鍵對照表。</p>
+        <p>怎麼 build（記得限制並行）、怎麼跑 doctest、怎麼 headless 驗證、怎麼實機操作與按鍵對照表。</p>
       </a>
     </div>
   </section>

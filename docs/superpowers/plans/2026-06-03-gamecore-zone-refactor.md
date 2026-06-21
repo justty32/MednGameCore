@@ -1,5 +1,17 @@
 # gamecore-zone 重構實作計劃
 
+> ## ⚠ 狀態更新（2026-06-21）：部分內容已被取代（superseded）
+>
+> 本計畫的 **Task 1–8、Task 10–13 主幹**（從 opennefia-cpp hard fork、刪除原型/locale/cvar/EventBus、改名 `zone_*`、簡化元件、新增 ActorComponent、移除 yaml-cpp、重建 GDExtension/headless verify）大致已落實，仍可作歷史脈絡參考。
+>
+> 但本計畫描述的**回合制細節已於 2026-06-21 回合系統重構整體改寫**，下列敘述**不代表現況**：
+> - **回合迴圈**：本計畫的「`advance_turn()` actor poll：輪詢所有 `ActorComponent` 實體跑 `npc_ai_system`、英雄行動由前端在 `advance_turn()` 前完成」**已被取代**為最簡 `TurnEngine`（`src/core/turn/turn_engine.{h,cpp}`）：actor 一條 `std::list`（順序＝加入序）、`begin_round()`+`step()`、`ActPointComponent`、`ControllerComponent` 分派（Player 阻塞 / Self `decide_chase`）。`ActorComponent` 空 tag 與 `advance_turn()` poll 模式**不再是現況**。
+> - **GDExtension 介面**：本計畫 Task 8/9 的 `move(dx,dy)`/`wait_turn()`/`advance_turn()` **已被取代**為 `next_round()`/`player_move(dx,dy)`/`player_wait()`/`is_waiting_player()`/`round_in_progress()`（見 `src/gbind/zone_world_gd.{h,cpp}` 與真相基準）。
+> - **元件**：後續另新增 `ControllerComponent`、`ActPointComponent`；攻擊改為「移動進入有 actor 的格子」（無獨立 Attack 動作）。
+> - **測試數字**：Task 12 的「約 20–25 cases」為當時估計；現況為 doctest 29 test case / 93 assertion 全綠。
+>
+> 以下內容保留作歷史實作記錄，閱讀回合制/介面部分時以本註記為準。
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** 從 opennefia-cpp hard fork 出 `derived/gamecore-zone/`，刪除 OpenNefia 特有機制，建立乾淨的 gamecore 區域層（Area Layer）ECS 基底，回合制 Actor poll 模式。

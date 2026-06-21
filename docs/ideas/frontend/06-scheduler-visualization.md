@@ -1,45 +1,55 @@
-# 排程器視覺化：能量、詠唱與時間線
+# 行動順序視覺化：能量、詠唱與時間線（現況不適用）
 
-> 日期：2026-06-11
-> 定位：把 A/B/C 三種 scheduler 的不可見時間狀態，轉成玩家能理解的 UI 回饋。
+> 日期：2026-06-21
+> 定位：原為「把 A/B/C 三種 scheduler 的不可見時間狀態轉成 UI 回饋」。
+
+> 狀態更新（2026-06-21）：**本主題的整個前提已隨回合系統重構消失。**
+> 排程器 A/B/C、能量制、行動值（readiness）、詠唱進度（channel）、tick 倒數、world clock——
+> 這些概念在重構中**全部移除**。現況 `TurnEngine` 是教科書式回合制：actor linked list，
+> 加入序＝固定回合序，每 actor 每回合行動一次，**沒有任何「不可見的時間狀態」可視覺化**。
+>
+> 因此本文**不適用於現況**。以下內容保留作為設計記錄與條件式未來方向：
+> 若日後在最簡 TurnEngine 之上引入「能量制 / 先攻 / 行動成本 / 多回合動作」等時間模型擴充，
+> 屆時才會重新出現「誰快動、誰在詠唱」的黑箱問題，本文的視覺化點子才有施展空間。
 
 ---
 
-## 1. 現況問題
+## 1. 原始問題（重構前，現已不存在）
 
-排程器是 gamecore-zone 的核心賣點，但目前玩家只能看 debug dump。若不視覺化，B 模型的 channel / interrupt、A 模型的速度差、C 模型的 tick 剩餘都會變成黑箱。
+排程器曾是 gamecore-zone 的核心賣點，玩家只能看 debug dump，
+B 模型的 channel / interrupt、A 模型的速度差、C 模型的 tick 剩餘都是黑箱。
+**這套排程器系統已整體移除，下列設計僅在未來引入等價時間模型時才適用。**
 
-## 2. 最小可用視覺化（優先序：中）
+## 2.（未來條件式）最小可用視覺化
 
-每個 actor 顯示：
+若引入能量/先攻擴充，每個 actor 可顯示：
 
-- HP 條。
-- energy / next action meter。
-- ongoing action 名稱與剩餘進度。
+- HP 條（這項現況也有價值，已併入 03 HUD）。
+- 行動就緒度 / 下一次行動 meter。
+- 進行中動作名稱與剩餘進度（需先有多回合動作）。
 - 若等待玩家輸入，外框閃爍。
 
-HUD 側邊加一個「即將行動」列表：
+HUD 側邊可加一個「即將行動」列表（示意）：
 
 ```text
 Hero      ready
 Goblin A  74%
-Caster B  casting fireball 2/3
+Caster B  casting ... 2/3
 ```
 
-## 3. 模式差異
+> 注意：現況 `TurnEngine` 的行動順序就是 actor 加入序，固定且可預測（hero 永遠最先），
+> 沒有「就緒度百分比」可言，做這個列表純屬冗餘。
 
-| Scheduler | UI 重點 |
-|---|---|
-| A energy instant | 下一個 ready actor、速度差 |
-| B energy channel | 詠唱進度、可打斷窗口 |
-| C tick remaining | 剩餘 ticks、固定倒數感 |
+## 3.（未來條件式）模式差異
 
-不需要三套 UI。共用欄位為 `readiness`、`ongoing`、`waiting`，由 binding 層把各 scheduler 內部狀態正規化。
+若未來實作多種時間模型，共用欄位為 `readiness`、`ongoing`、`waiting`，
+由 binding 層把各模型內部狀態正規化，前端不需知道 C++ 型別細節。
+（重構前曾規劃 A/B/C 三模型差異 UI，現已無此需求。）
 
-## 4. 需要的 snapshot 欄位
+## 4.（未來條件式）需要的 snapshot 欄位
 
 ```text
-actor.scheduler = {
+actor.timing = {
   "readiness": float,      // 0..1
   "is_waiting": bool,
   "ongoing_name": String,
@@ -48,10 +58,10 @@ actor.scheduler = {
 }
 ```
 
-如果某 scheduler 沒有某欄，填合理預設，不讓前端知道太多 C++ 型別。
+如果某時間模型沒有某欄，填合理預設。**此 snapshot 現況不存在，須隨時間模型擴充一併設計。**
 
 ## 5. 不做的事
 
-- 不做華麗時間軸動畫第一版；先讓玩家知道誰快動、誰在詠唱。
-- 不把 scheduler 內部 pending map 原樣曝給 Godot。
-- 不為 debug 視覺化破壞 scheduler 可替換性。
+- **現況：不實作任何行動順序/能量視覺化**——無對應後端狀態，做了也是空殼。
+- 未來若引入：不做華麗時間軸動畫第一版；先讓玩家知道誰快動。
+- 不把後端內部 pending 結構原樣曝給 Godot。

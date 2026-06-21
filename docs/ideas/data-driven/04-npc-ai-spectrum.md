@@ -1,17 +1,26 @@
 # NPC AI 資料化光譜
 
-> 日期：2026-06-11
-> 定位：從現有 `decide_chase` 追擊腦出發，規劃 NPC AI 如何逐步參數化，而不是一步跳到行為樹。
+> 日期：2026-06-11（內容於 2026-06-21 回合系統重構後校正）
+> 定位：從現有 `decide_chase` 追擊腦出發，規劃 NPC AI 如何逐步參數化，而不是一步跳到行為樹。**AI 光譜仍為有效未來方向。**
 
 ---
 
 ## 1. 現況
 
-`npc_brain.cpp` 已有純函式決策：追玩家、相鄰攻擊、caster 可放 `npc_flame`。這很適合測試，但行為差異主要寫死在 C++ 與 spawn 邏輯。
+`apply_action.cpp` 的 `decide_chase(reg, self, target)` 是**唯一**的 NPC 決策：
+朝 target 移動一格，相鄰即撞擊攻擊（攻擊＝移動進入有 actor 的格子），無目標則
+`Action::wait()`。2026-06-21 重構**移除了施法者 AI**（舊的 nova/`npc_flame`/
+is_caster 已隨技能系統一併刪除）——現在只剩單純追擊。這很適合測試，但所有行為
+差異仍寫死在 C++ 與 spawn 邏輯。
+
+> **落地點**：「AI／操控由誰決定」現在統一收斂到 `ControllerComponent.kind`
+> （`Player`/`Self`/`Faction`）。TurnEngine 依此分派：`Player` 暫停等玩家、
+> `Self`/`Faction` 走 `ctx.decide()`（目前即 `decide_chase`）。要擴充 AI 種類時，
+> 這個 kind ＋ prototype 的 `ai` 欄位（見 02）就是分派的接口。
 
 ## 2. 第一階段：ChaseParams（優先序：中高）
 
-PrototypeDef 加：
+PrototypeDef 的 `ai` 由字串擴成物件，加可調參數：
 
 ```json
 {
@@ -19,18 +28,19 @@ PrototypeDef 加：
     "kind": "chase",
     "aggro_range": 8,
     "preferred_range": 1,
-    "skill": "npc_flame",
-    "cast_chance": 35,
     "flee_hp_percent": 0
   }
 }
 ```
 
-C++ 仍是同一個 `decide_chase(params, world)`，只是參數由 prototype 來。
+C++ 仍是同一個 `decide_chase`，只是改吃 prototype 來的參數。
+（`skill`/`cast_chance` 這類施法欄位等 01 的資料驅動動作重新引入後再加，
+目前沒有技能可放。）
 
 ## 3. 第二階段：Utility 權重表（中低）
 
-當技能、狀態、資源變多後，caster 不該只靠固定 chance：
+當技能、狀態、資源變多後（前提：01 的資料驅動動作已重新引入），caster 不該只靠
+固定 chance。下例的 `heal`/`fireball` 是**假想的未來 action id**（目前不存在）：
 
 ```json
 "utility": [
