@@ -9,6 +9,8 @@
 #include <core/components/combat_stats_component.h>
 #include <core/components/world_state_component.h>
 #include <core/components/hero_component.h>
+#include <core/components/controller_component.h>
+#include <core/components/act_point_component.h>
 
 namespace zone::serialize {
 
@@ -21,7 +23,9 @@ using AllComponents = entt::type_list<
     ItemComponent,
     CombatStatsComponent,
     WorldStateComponent,
-    HeroComponent
+    HeroComponent,
+    ControllerComponent,
+    ActPointComponent
 >;
 
 } // namespace zone::serialize
