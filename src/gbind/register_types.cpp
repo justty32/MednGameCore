@@ -1,6 +1,7 @@
 #include "register_types.h"
 #include "zone_core_gd.h"
 #include "zone_world_gd.h"
+#include "tactics_battle_gd.h"
 
 #include <gdextension_interface.h>
 #include <godot_cpp/godot.hpp>
@@ -13,6 +14,7 @@ void initialize_zone_module(ModuleInitializationLevel p_level) {
     if (p_level != MODULE_INITIALIZATION_LEVEL_SCENE) return;
     GDREGISTER_CLASS(zone_gd::ZoneCore);
     GDREGISTER_CLASS(zone_gd::ZoneWorld);
+    GDREGISTER_CLASS(zone_gd::TacticsBattle);
 }
 
 void uninitialize_zone_module(ModuleInitializationLevel p_level) {
