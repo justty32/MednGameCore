@@ -83,9 +83,9 @@
 │  ├─ <span class="f">map_view.tscn</span>          <span class="cmt"># 主場景</span>
 │  └─ <span class="f">verify.gd</span>             <span class="cmt"># headless 驗證腳本</span>
 ├─ <span class="d">tests/src/</span>               <span class="cmt"># doctest 單元測試（29 案）</span>
-├─ <span class="d">docs/superpowers/</span>        <span class="cmt"># 設計文件 + 實作計畫（含歷史設計）</span>
-├─ <span class="d">docs/ideas/</span>             <span class="cmt"># 後續設計主題（未來可選擴充）</span>
-└─ <span class="f">session_log.md</span>          <span class="cmt"># 逐步開發日誌（想知道為什麼這樣做就讀它）</span>
+├─ <span class="d">docs/</span>                    <span class="cmt"># 架構與函數說明、進度說明、archive/ 舊日誌</span>
+├─ <span class="d">workflows/</span>               <span class="cmt"># 開發流程：specs/plans/idea/roadmap/tooling…（含歷史設計）</span>
+└─ <span class="f">SESSION-LOG.md</span>           <span class="cmt"># 目前進度 hub（想知道為什麼這樣做就讀它）</span>
     </div>
   </section>
 
@@ -100,8 +100,8 @@
       <tbody>
         <tr><td>src/core/turn/turn_engine.h</td><td>現況真相：actor list、begin_round/step、Player 阻塞 vs Self 立即解算</td></tr>
         <tr><td>src/core/turn/apply_action.{h,cpp}</td><td>現況真相：移動／撞牆／撞擊攻擊／拾取／下樓梯怎麼結算、decide_chase</td></tr>
-        <tr><td>session_log.md</td><td>逐步做了什麼、每個決策的理由、踩過哪些坑（最快的上手入口）</td></tr>
-        <tr><td>docs/ideas/、docs/superpowers/</td><td>歷史設計與未來方向：能量制／詠唱／技能／狀態效果等已移除實驗的設計探索，重新定位為「建立在 TurnEngine 之上的未來可選擴充」</td></tr>
+        <tr><td>SESSION-LOG.md</td><td>逐步做了什麼、每個決策的理由、踩過哪些坑（最快的上手入口）</td></tr>
+        <tr><td>workflows/idea/、workflows/specs/archive/、workflows/plans/archive/</td><td>歷史設計與未來方向：能量制／詠唱／技能／狀態效果等已移除實驗的設計探索，重新定位為「建立在 TurnEngine 之上的未來可選擴充」</td></tr>
       </tbody>
     </table>
   </section>
@@ -148,7 +148,7 @@
       <div class="card fire reveal">
         <span class="k">1</span>
         <div class="ico">🪵</div>
-        <h3>session_log.md</h3>
+        <h3>SESSION-LOG.md</h3>
         <p>從頭讀到尾。它就是這條分支的故事，每段都對應一次真實提交。</p>
       </div>
       <div class="card cyan reveal">

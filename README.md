@@ -4,7 +4,7 @@ gamecore 三層架構（World / Region / Area）中的第三層——**區域層
 以 **C++/EnTT ECS 核心** 搭配 **Godot 4.6 GDExtension（mono）前端**，實作一個**最傳統的回合制**地城探索原型。
 
 > 2026-06-21 回合系統重構後，本專案刻意收斂為「教科書式回合制」（`TurnEngine`），
-> 作為乾淨的基礎地基。能量制／先攻／詠唱／技能／狀態效果等已移除，重新定位為未來可選的擴充主題（見 `docs/ideas/`）。
+> 作為乾淨的基礎地基。能量制／先攻／詠唱／技能／狀態效果等已移除，重新定位為未來可選的擴充主題（見 `workflows/idea/`）。
 
 ## 現有功能
 
@@ -22,7 +22,8 @@ gamecore 三層架構（World / Region / Area）中的第三層——**區域層
 | `src/gbind/` | Godot GDExtension 綁定：`ZoneWorld`（`zone_world_gd.{h,cpp}`） |
 | `godot_zone/` | Godot 專案：主場景 `map_view.tscn`、`map_view.gd`、`verify.gd`、`bin/`（編譯產物 `.so`，gitignore） |
 | `tests/` | doctest 測試（`tests/src/`） |
-| `docs/` | `ideas/`（後續設計主題）、`superpowers/`（歷史設計記錄／規格） |
+| `docs/` | 現役文檔（架構與函數說明、進度說明）、`archive/`（舊 session log） |
+| `workflows/` | `idea/`（後續設計主題）、`specs/archive/`、`plans/archive/`（歷史設計記錄／規格） |
 | `html/` | 專案導覽網站（總覽／架構／機制／測試驗證） |
 
 ## 建置與測試

@@ -2,7 +2,7 @@
 
 gamecore 三層架構（World/Region/Area）的第三層——區域層（Area Layer）。
 Hard fork 自 derived/opennefia-cpp/，保留 ECS/FOV/戰鬥，刪除 OpenNefia 特有機制。
-設計文件：docs/superpowers/specs/2026-06-03-gamecore-zone-design.md
+設計文件（歷史記錄，已被 2026-06-21 重構取代）：workflows/specs/archive/2026-06-03-gamecore-zone-design.md
 
 ---
 
@@ -30,7 +30,7 @@ Hard fork 自 derived/opennefia-cpp/，保留 ECS/FOV/戰鬥，刪除 OpenNefia 
 
 **建置鐵則**：建置務必限制並行（如 `-j4`）。曾因無上限 `-j` 觸發 OOM 強制重啟。
 
-**後續可選擴充**：能量制／先攻／詠唱／技能／狀態效果／多角色 order 等，重新定位為「建立在最簡 `TurnEngine` 之上的未來主題」，設計探索保留於 `docs/ideas/`。
+**後續可選擴充**：能量制／先攻／詠唱／技能／狀態效果／多角色 order 等，重新定位為「建立在最簡 `TurnEngine` 之上的未來主題」，設計探索保留於 `workflows/idea/`。
 
 ---
 
@@ -39,7 +39,7 @@ Hard fork 自 derived/opennefia-cpp/，保留 ECS/FOV/戰鬥，刪除 OpenNefia 
 > ⚠️ **狀態更新（2026-06-21）**：以下段落描述的是重構**前**的舊設計
 > （對稱 `tick_actor` 模型、`OngoingActionComponent` 打斷、能量制／三排程器 A/B/C 等）。
 > 這套實驗已於回合系統重構中**整體移除**，改為最簡 `TurnEngine`。
-> 以下保留作歷史設計記錄，所引用的設計文件（`docs/superpowers/specs/`、`plans/`、`turn-loop-sketch.cpp` 等）若仍存在亦屬歷史記錄，已被重構取代。
+> 以下保留作歷史設計記錄，所引用的設計文件（現位於 `workflows/specs/archive/`、`workflows/plans/archive/`）若仍存在亦屬歷史記錄，已被重構取代。
 
 **（歷史）回合迴圈設計定案（五條）**：
 1. 對稱模型：玩家/NPC 共用 tick_actor，唯一差別在 provide_next_action()（玩家回 nullopt→idle 等輸入；NPC 回 AI 決策）
@@ -48,4 +48,4 @@ Hard fork 自 derived/opennefia-cpp/，保留 ECS/FOV/戰鬥，刪除 OpenNefia 
 4. display_chunk_ 動態可調（Godot 設）；C++ 擁規則 dt = min(行動剩餘, display_chunk_)
 5. 阻塞 = snapshot.hero.idle，C++ 永不 spin；「打斷」= 覆寫 OngoingActionComponent（無佇列）；「繼續」不是 Action，是 step() 不帶 cmd
 
-**（歷史）核心上下文**：設計真相層曾在 `docs/superpowers/specs/2026-06-03-gamecore-zone-design.md` §7 + 同目錄 turn-loop-sketch.cpp，以及後續 `2026-06-07-action-and-turn-scheduler-design.md`（能量制／三排程器）。上述設計皆已被 2026-06-21 重構取代。
+**（歷史）核心上下文**：設計真相層曾在 `workflows/specs/archive/2026-06-03-gamecore-zone-design.md` §7 + 同目錄 `turn-loop-sketch.cpp`，以及後續 `workflows/specs/archive/2026-06-07-action-and-turn-scheduler-design.md`（能量制／三排程器）。上述設計皆已被 2026-06-21 重構取代。
