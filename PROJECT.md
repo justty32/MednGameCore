@@ -6,6 +6,51 @@ Hard fork 自 derived/opennefia-cpp/，保留 ECS/FOV/戰鬥，刪除 OpenNefia 
 
 ---
 
+## 進度快照（2026-07-10 SRPG 戰棋戰鬥 slice）
+
+**當前理解（一句話）**：在既有的最傳統回合制地城探索之外，新增一條**平行獨立**的
+SRPG 戰棋戰鬥線——單位行動序（ToME4 行動值行動條）、移動一次＋行動一次的單位回合、
+最小可玩 AI、殲滅一方分勝負，兩者共用 ECS／地圖／存讀檔基建但回合驅動互不干涉；
+Godot 前端新增主選單串起兩個場景。設計記錄：
+[workflows/specs/2026-07-10-srpg-tactics-battle-design.md](workflows/specs/2026-07-10-srpg-tactics-battle-design.md)。
+
+**已落地（現況）**：
+- **新核心模組 `src/core/tactics/`**（godot-free）：`action_bar.{h,cpp}`（`ActionBar`，
+  `kCtToAct=1000`，出手後 `ct -= kCtToAct` 保留溢出、不歸零，快角偶爾連動兩次）、
+  `move_range.{h,cpp}`（四方向 BFS 可達集，牆與其他單位佔格皆阻擋，不能穿也不能停）、
+  `tactics_action.h`/`tactics_event.h`（`Wait`/`MoveTo`/`Attack`、`Moved`/`Attacked`/
+  `UnitDied`/`Rejected`）、`apply_tactics_action.{h,cpp}`（只驗證幾何合法性，不管子狀態）、
+  `tactics_ai.{h,cpp}`（`decide_tactics`，與地城 `decide_npc()` 同一模式；選格排序鍵是
+  `deficit` 越小越好、`nearest` **越大越好**——第二鍵防止遠程單位貼臉送死——再來
+  `steps` 越小越好）、`battle.{h,cpp}`（`Battle` 子狀態機：移動一次＋行動一次，攻擊即
+  結束回合）。
+- **新元件**（皆已同步 `src/core/serialize/all_components.h`）：`TeamComponent`
+  （`team`，`TEAM_PLAYER=0`/`TEAM_ENEMY=1`）、`TacticsUnitComponent`
+  （`move_range`/`attack_range`/`speed`）、`TurnGaugeComponent`（`ct`）。
+- **新橋樑 `src/gbind/tactics_battle_gd.{h,cpp}`**：`TacticsBattle : Node`，與 `ZoneWorld`
+  平行、互不依賴，已在 `register_types.cpp` 註冊。自建 20×14 開闊競技場（含障礙與
+  flood-fill 連通性檢查）、雙方各 3 個原型單位（戰士/弓手/斥候）。刻意不在 `_ready()`
+  自動開局——`start_battle()` 的 `pump()` 會跑敵方 AI 並發 signal，前端須先接信號。
+- **Godot 前端**：`tile_atlas.gd`（`TileAtlas`，圖塊座標唯一真相來源，`dungeon_view.gd`
+  已改用它、不再自己定義 `T_*` 常數）、`arena_view.gd`（戰棋繪製層）、
+  `tactics_view.{tscn,gd}`（滑鼠操作、`_seen_units` 快照讓死亡訊息仍叫得出名字）、
+  `main_menu.{tscn,gd}`（**新的 `project.godot` main scene**，兩個入口：地城探索／
+  戰棋對戰）、`verify_tactics.gd`（headless 機器人打完整場）。`map_view.gd` 新增
+  Esc 回主選單。
+- **測試**：`tests/src/test_tactics.cpp` 新增 22 case，涵蓋行動條溢出保留／可達集
+  阻擋規則／攻擊射程與敵我判定／AI 排序鍵／回合子狀態機／AI 自動打完整場。
+
+**測試／驗證（現況數字，實跑確認）**：
+- doctest **55 test case / 236 assertion 全綠**（`./build/bin/zone_test`）。
+- headless `verify.gd` → **VERIFY PASSED**（地城，不受此 slice 影響）。
+- headless `verify_tactics.gd` → **TACTICS VERIFY PASSED**（機器人打完整場，
+  `battle_over` signal 與 `get_winner()` 一致，移動/攻擊/死亡事件皆有發生）。
+- 使用者已在視窗中實機試玩兩個場景，回報運作良好（見 `SESSION-LOG.md`）。
+
+**建置鐵則**：建置務必限制並行（如 `-j4`）。曾因無上限 `-j` 觸發 OOM 強制重啟。
+
+---
+
 ## 進度快照（2026-07-10 可玩化 slice）
 
 **當前理解（一句話）**：這一批把「回合引擎能跑」推進到「一場遊戲可以真的被玩完」——NPC AI 雙軌並存問題已解決（只留 `decide_npc`）、遊戲有明確勝利條件（第 5 層樓梯）與下樓成長、Godot 前端改用圖塊渲染＋HUD／訊息列，並用 headless BFS 機器人驗證整場可達結局。
