@@ -16,7 +16,8 @@ struct MapData;  // 前置宣告；.cpp 才 include map_data.h
 void apply_action(entt::registry& reg, MapData* map, entt::entity self,
                   const Action& a, std::vector<ZoneEvent>* events);
 
-// 最精簡 NPC 決策：朝 target 移動一格（相鄰時即為撞擊攻擊）；無目標則等待。
-Action decide_chase(entt::registry& reg, entt::entity self, entt::entity target);
+// 站在 (x,y) 的 actor（忽略 except）；沒有則回 entt::null。
+// 撞擊攻擊判定與 NPC 尋路避讓共用，故公開在此。
+entt::entity actor_at(const entt::registry& reg, int x, int y, entt::entity except);
 
 } // namespace zone

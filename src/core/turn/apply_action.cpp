@@ -17,17 +17,16 @@ void push(std::vector<ZoneEvent>* ev, const ZoneEvent& e) {
     if (ev) ev->push_back(e);
 }
 
-// 站在 (x,y) 的其他 actor（用於撞擊攻擊判定）。
-entt::entity actor_at(entt::registry& reg, int x, int y, entt::entity except) {
-    for (auto e : reg.view<ActorComponent, SpatialComponent>()) {
+} // namespace
+
+entt::entity actor_at(const entt::registry& reg, int x, int y, entt::entity except) {
+    for (auto e : reg.view<const ActorComponent, const SpatialComponent>()) {
         if (e == except) continue;
-        const auto& sp = reg.get<SpatialComponent>(e);
+        const auto& sp = reg.get<const SpatialComponent>(e);
         if (sp.x == x && sp.y == y) return e;
     }
     return entt::null;
 }
-
-} // namespace
 
 void apply_action(entt::registry& reg, MapData* map, entt::entity self,
                   const Action& a, std::vector<ZoneEvent>* ev) {
@@ -87,18 +86,6 @@ void apply_action(entt::registry& reg, MapData* map, entt::entity self,
     // 踩到下樓梯
     if (map && map->at(nx, ny).is_stair_down())
         push(ev, { EventKind::ReachedStairDown, self });
-}
-
-Action decide_chase(entt::registry& reg, entt::entity self, entt::entity target) {
-    if (!reg.valid(self) || !reg.valid(target)) return Action::wait();
-    const auto* s = reg.try_get<SpatialComponent>(self);
-    const auto* t = reg.try_get<SpatialComponent>(target);
-    if (!s || !t) return Action::wait();
-
-    const int dx = (t->x > s->x) - (t->x < s->x);  // -1 / 0 / +1
-    const int dy = (t->y > s->y) - (t->y < s->y);
-    if (dx == 0 && dy == 0) return Action::wait();
-    return Action::move(encode_dir(dx, dy));
 }
 
 } // namespace zone

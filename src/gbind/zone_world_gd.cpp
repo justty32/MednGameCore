@@ -13,6 +13,7 @@
 #include "core/turn/action.h"
 #include "core/turn/move_dir.h"
 #include "core/turn/apply_action.h"
+#include "core/turn/npc_ai.h"
 #include "core/maps/map_data.h"
 #include "core/maps/map_gen.h"
 #include "core/systems/fov_system.h"
@@ -21,8 +22,7 @@
 #include <algorithm>
 #include <random>
 #include <filesystem>
-#include <godot_cpp/variant/rect2i.hpp>
-#include <godot_cpp/variant/color.hpp>
+#include <godot_cpp/variant/dictionary.hpp>
 #include <godot_cpp/variant/utility_functions.hpp>
 
 using namespace godot;
@@ -40,6 +40,19 @@ static constexpr int NPC_BASE_HP   = 5;
 static constexpr int NPC_HP_SCALE  = 2;
 static constexpr int NPC_ATK_BASE  = 2;
 static constexpr int NPC_ATK_SCALE = 1;
+static constexpr int WIN_FLOOR     = 5;   // 走下第 5 層的樓梯即通關
+
+// 下樓成長。沒有這個，怪物每層變強而英雄不變，第 4 層起殺一隻怪要挨滿 20 點傷，
+// 第 5 層一隻都打不贏——勝利條件會變成數學上不可能。
+static constexpr int HERO_MAXHP_PER_FLOOR = 5;
+static constexpr int HERO_HEAL_PER_FLOOR  = 5;
+static constexpr int HERO_ATK_PER_FLOOR   = 1;
+
+// get_tile_flags() 的位元定義（與 map_view.gd 的 TILE_* 常數對應）
+static constexpr uint8_t TF_WALKABLE = 1 << 0;
+static constexpr uint8_t TF_STAIR    = 1 << 1;
+static constexpr uint8_t TF_VISIBLE  = 1 << 2;
+static constexpr uint8_t TF_EXPLORED = 1 << 3;
 
 // ---- static binding --------------------------------------------------------
 
@@ -47,7 +60,8 @@ void zone_gd::ZoneWorld::_bind_methods() {
     ClassDB::bind_method(D_METHOD("get_map_width"),  &ZoneWorld::get_map_width);
     ClassDB::bind_method(D_METHOD("get_map_height"), &ZoneWorld::get_map_height);
     ClassDB::bind_method(D_METHOD("is_walkable", "x", "y"), &ZoneWorld::is_walkable);
-    ClassDB::bind_method(D_METHOD("generate_map_image", "cell_px"), &ZoneWorld::generate_map_image);
+    ClassDB::bind_method(D_METHOD("get_tile_flags"), &ZoneWorld::get_tile_flags);
+    ClassDB::bind_method(D_METHOD("get_visible_entities"), &ZoneWorld::get_visible_entities);
 
     ClassDB::bind_method(D_METHOD("next_round"), &ZoneWorld::next_round);
     ClassDB::bind_method(D_METHOD("player_move", "dx", "dy"), &ZoneWorld::player_move);
@@ -66,9 +80,15 @@ void zone_gd::ZoneWorld::_bind_methods() {
     ClassDB::bind_method(D_METHOD("get_turn_count"),  &ZoneWorld::get_turn_count);
     ClassDB::bind_method(D_METHOD("get_hero_hp"),     &ZoneWorld::get_hero_hp);
     ClassDB::bind_method(D_METHOD("get_hero_max_hp"), &ZoneWorld::get_hero_max_hp);
+    ClassDB::bind_method(D_METHOD("get_hero_attack"), &ZoneWorld::get_hero_attack);
     ClassDB::bind_method(D_METHOD("get_npc_count"),   &ZoneWorld::get_npc_count);
     ClassDB::bind_method(D_METHOD("get_current_floor"), &ZoneWorld::get_current_floor);
+    ClassDB::bind_method(D_METHOD("get_win_floor"),     &ZoneWorld::get_win_floor);
+    ClassDB::bind_method(D_METHOD("is_game_over"),      &ZoneWorld::is_game_over);
+    ClassDB::bind_method(D_METHOD("is_game_won"),       &ZoneWorld::is_game_won);
     ClassDB::bind_method(D_METHOD("restart"),           &ZoneWorld::restart);
+    ClassDB::bind_method(D_METHOD("set_seed", "seed"),  &ZoneWorld::set_seed);
+    ClassDB::bind_method(D_METHOD("get_seed"),          &ZoneWorld::get_seed);
     ClassDB::bind_method(D_METHOD("save_game", "path"),     &ZoneWorld::save_game);
     ClassDB::bind_method(D_METHOD("load_game", "path"),     &ZoneWorld::load_game);
     ClassDB::bind_method(D_METHOD("has_save_game", "path"), &ZoneWorld::has_save_game);
@@ -76,18 +96,41 @@ void zone_gd::ZoneWorld::_bind_methods() {
     ADD_SIGNAL(MethodInfo("world_changed"));
     ADD_SIGNAL(MethodInfo("round_finished"));
     ADD_SIGNAL(MethodInfo("floor_changed", PropertyInfo(Variant::INT, "floor_num")));
+    // 下樓成長：新的最大 HP 與攻擊力
+    ADD_SIGNAL(MethodInfo("hero_grew",
+        PropertyInfo(Variant::INT, "max_hp"),
+        PropertyInfo(Variant::INT, "attack")));
     ADD_SIGNAL(MethodInfo("hero_bumped_wall"));
-    ADD_SIGNAL(MethodInfo("hero_bumped_npc", PropertyInfo(Variant::STRING, "npc_id")));
-    ADD_SIGNAL(MethodInfo("npc_died", PropertyInfo(Variant::STRING, "npc_id")));
+    // 英雄打中 NPC：傷害 + 對方剩餘 HP（0 代表這一擊沒殺死但也沒剩，實務上 >0）
+    ADD_SIGNAL(MethodInfo("hero_attacked",
+        PropertyInfo(Variant::INT, "damage"),
+        PropertyInfo(Variant::INT, "target_hp_left")));
+    // 英雄被 NPC 打：傷害 + 英雄剩餘 HP
+    ADD_SIGNAL(MethodInfo("hero_hurt",
+        PropertyInfo(Variant::INT, "damage"),
+        PropertyInfo(Variant::INT, "hp_left")));
+    ADD_SIGNAL(MethodInfo("npc_died"));
     ADD_SIGNAL(MethodInfo("item_picked_up",
         PropertyInfo(Variant::STRING, "item_name"),
         PropertyInfo(Variant::INT,    "heal_amount")));
     ADD_SIGNAL(MethodInfo("game_over"));
+    ADD_SIGNAL(MethodInfo("game_won", PropertyInfo(Variant::INT, "floor_num")));
 }
 
 // ---- ctor / lifecycle -------------------------------------------------------
 
-zone_gd::ZoneWorld::ZoneWorld() = default;
+zone_gd::ZoneWorld::ZoneWorld() {
+    seed_ = std::random_device{}();
+    rng_.seed(seed_);
+}
+
+void zone_gd::ZoneWorld::set_seed(int seed) {
+    seed_       = static_cast<uint32_t>(seed);
+    seed_fixed_ = true;
+    rng_.seed(seed_);
+}
+
+int zone_gd::ZoneWorld::get_seed() const { return static_cast<int>(seed_); }
 
 void zone_gd::ZoneWorld::_ready() {
     setup_world();
@@ -125,8 +168,7 @@ void zone_gd::ZoneWorld::setup_map() {
     em_.emplace<zone::WorldStateComponent>(map_entity_,
         zone::WorldStateComponent{ turn_count_, current_floor_ });
 
-    std::mt19937 rng(std::random_device{}());
-    auto rooms = zone::generate_bsp_dungeon(map, rng);
+    auto rooms = zone::generate_bsp_dungeon(map, rng_);
 
     // 英雄（操控者＝玩家）。第一次建立，之後只更新位置（保留 HP）。
     int hx = rooms.empty() ? MAP_W / 2 : rooms[0].cx();
@@ -176,7 +218,7 @@ void zone_gd::ZoneWorld::setup_map() {
     {
         std::uniform_int_distribution<int> pct(0, 99);
         for (int r = 1; r < (int)rooms.size() - 1; ++r) {
-            if (pct(rng) >= ITEM_PCT) continue;
+            if (pct(rng_) >= ITEM_PCT) continue;
             int val = 5 + (current_floor_ - 1) * 2;
             auto e = em_.create();
             reg.emplace<zone::ItemComponent>(e,
@@ -190,6 +232,23 @@ void zone_gd::ZoneWorld::setup_map() {
 
 void zone_gd::ZoneWorld::next_floor() {
     ++current_floor_;
+
+    // 撐過一層 → 英雄變強，才跟得上怪物的每層強化
+    auto& reg = em_.registry();
+    if (hero_entity_ != entt::null && reg.valid(hero_entity_)) {
+        int new_max = 0, new_atk = 0;
+        if (auto* hp = reg.try_get<zone::HealthComponent>(hero_entity_)) {
+            hp->max_hp += HERO_MAXHP_PER_FLOOR;
+            hp->hp = std::min(hp->max_hp, hp->hp + HERO_HEAL_PER_FLOOR);
+            new_max = hp->max_hp;
+        }
+        if (auto* cs = reg.try_get<zone::CombatStatsComponent>(hero_entity_)) {
+            cs->attack += HERO_ATK_PER_FLOOR;
+            new_atk = cs->attack;
+        }
+        emit_signal("hero_grew", new_max, new_atk);
+    }
+
     setup_map();
     recompute_fov();
     emit_signal("floor_changed", current_floor_);
@@ -201,8 +260,12 @@ void zone_gd::ZoneWorld::restart() {
         em_.registry().destroy(hero_entity_);
     hero_entity_   = entt::null;
     game_over_     = false;
+    game_won_      = false;
     turn_count_    = 0;
     current_floor_ = 1;
+    // 種子被釘住 → 每次 restart 重跑同一場（驗證/除錯用）；否則抽新的一場。
+    if (!seed_fixed_) seed_ = std::random_device{}();
+    rng_.seed(seed_);
     engine_.clear();
     trace_log_.clear();
     setup_map();
@@ -223,7 +286,9 @@ void zone_gd::ZoneWorld::recompute_fov() {
 // ---- 回合推進 --------------------------------------------------------------
 
 zone::Action zone_gd::ZoneWorld::npc_decide(entt::entity e) {
-    return zone::decide_chase(em_.registry(), e, hero_entity_);
+    const zone::MapData* map = (map_entity_ != entt::null)
+        ? &em_.get<zone::MapData>(map_entity_) : nullptr;
+    return zone::decide_npc(em_.registry(), map, e, hero_entity_, rng_);
 }
 
 zone::EngineCtx zone_gd::ZoneWorld::make_ctx() {
@@ -241,14 +306,17 @@ zone::EngineCtx zone_gd::ZoneWorld::make_ctx() {
     return ctx;
 }
 
+// 遊戲已結束（死亡或通關）→ 一切玩家指令無效，等 restart()。
+bool zone_gd::ZoneWorld::finished() const { return game_over_ || game_won_; }
+
 void zone_gd::ZoneWorld::next_round() {
-    if (game_over_) return;
+    if (finished()) return;
     engine_.begin_round();
     pump();
 }
 
 void zone_gd::ZoneWorld::player_move(int dx, int dy) {
-    if (game_over_) return;
+    if (finished()) return;
     if (!engine_.round_in_progress()) next_round();   // 沒在回合中就先開一輪（推進到英雄）
     if (engine_.waiting_actor() != hero_entity_) return;  // 還沒輪到玩家
     engine_.submit(hero_entity_, zone::Action::move(zone::encode_dir(dx, dy)));
@@ -256,7 +324,7 @@ void zone_gd::ZoneWorld::player_move(int dx, int dy) {
 }
 
 void zone_gd::ZoneWorld::player_wait() {
-    if (game_over_) return;
+    if (finished()) return;
     if (!engine_.round_in_progress()) next_round();
     if (engine_.waiting_actor() != hero_entity_) return;
     engine_.submit(hero_entity_, zone::Action::wait());
@@ -274,14 +342,20 @@ bool zone_gd::ZoneWorld::round_in_progress() const {
 void zone_gd::ZoneWorld::pump() {
     auto ctx = make_ctx();
     for (;;) {
-        if (game_over_) { emit_signal("world_changed"); return; }
+        if (finished()) { emit_signal("world_changed"); return; }
 
         events_.clear();
         zone::StepResult r = engine_.step(ctx);
         bool reached_stair = drain_events();   // 處理本步事件 → signal
 
         if (game_over_) { emit_signal("world_changed"); return; }
-        if (reached_stair) {                   // 樓層變更：結束本回合
+        if (reached_stair) {                   // 踩到樓梯：通關，或下一層
+            if (current_floor_ >= WIN_FLOOR) {
+                game_won_ = true;
+                emit_signal("world_changed");
+                emit_signal("game_won", current_floor_);
+                return;
+            }
             next_floor();
             emit_signal("round_finished");
             return;
@@ -310,16 +384,22 @@ bool zone_gd::ZoneWorld::drain_events() {
             case zone::EventKind::BumpedWall:
                 if (ev.a == hero_entity_) emit_signal("hero_bumped_wall");
                 break;
-            case zone::EventKind::BumpedActor:
-                if (ev.a == hero_entity_) emit_signal("hero_bumped_npc", String("npc"));
+            case zone::EventKind::BumpedActor: {
+                // 攻擊命中但未致死。兩個方向都要回報，否則玩家被打時毫無回饋。
+                const auto* hp = reg.try_get<zone::HealthComponent>(ev.b);
+                const int   left = hp ? hp->hp : 0;
+                if (ev.a == hero_entity_)      emit_signal("hero_attacked", ev.amount, left);
+                else if (ev.b == hero_entity_) emit_signal("hero_hurt",     ev.amount, left);
                 break;
+            }
             case zone::EventKind::ActorDied:
-                if (ev.b != hero_entity_) emit_signal("npc_died", String("npc"));
                 engine_.remove_actor(ev.b);
-                if (reg.valid(ev.b)) reg.destroy(ev.b);
-                if (ev.b == hero_entity_ && !game_over_) {
-                    game_over_ = true;
-                    emit_signal("game_over");
+                if (ev.b == hero_entity_) {
+                    // 英雄不 destroy：死亡畫面還要讀他的 HP/座標，restart() 才清掉。
+                    if (!game_over_) { game_over_ = true; emit_signal("game_over"); }
+                } else {
+                    if (reg.valid(ev.b)) reg.destroy(ev.b);
+                    emit_signal("npc_died");
                 }
                 break;
             case zone::EventKind::ItemPickedUp:
@@ -373,7 +453,8 @@ int zone_gd::ZoneWorld::get_hero_y() const {
 int zone_gd::ZoneWorld::get_turn_count()  const { return turn_count_; }
 int zone_gd::ZoneWorld::get_hero_hp()     const {
     if (!em_.registry().valid(hero_entity_)) return 0;
-    if (const auto* hp = em_.registry().try_get<zone::HealthComponent>(hero_entity_)) return hp->hp;
+    if (const auto* hp = em_.registry().try_get<zone::HealthComponent>(hero_entity_))
+        return std::max(0, hp->hp);   // 致命一擊會打成負數；對外一律夾到 0
     return 0;
 }
 int zone_gd::ZoneWorld::get_hero_max_hp() const {
@@ -381,56 +462,74 @@ int zone_gd::ZoneWorld::get_hero_max_hp() const {
     if (const auto* hp = em_.registry().try_get<zone::HealthComponent>(hero_entity_)) return hp->max_hp;
     return 0;
 }
+int zone_gd::ZoneWorld::get_hero_attack() const {
+    if (!em_.registry().valid(hero_entity_)) return 0;
+    if (const auto* cs = em_.registry().try_get<zone::CombatStatsComponent>(hero_entity_))
+        return cs->attack;
+    return 0;
+}
 int zone_gd::ZoneWorld::get_npc_count() const {
     return (int)em_.registry().view<zone::NpcAiComponent>().size();
 }
-int zone_gd::ZoneWorld::get_current_floor() const { return current_floor_; }
+int  zone_gd::ZoneWorld::get_current_floor() const { return current_floor_; }
+int  zone_gd::ZoneWorld::get_win_floor()   const { return WIN_FLOOR; }
+bool zone_gd::ZoneWorld::is_game_over()    const { return game_over_; }
+bool zone_gd::ZoneWorld::is_game_won()     const { return game_won_; }
 
-// ---- generate_map_image ----------------------------------------------------
+// ---- 呈現層資料來源（不含任何圖形決策）--------------------------------------
 
-godot::Ref<godot::Image> zone_gd::ZoneWorld::generate_map_image(int cell_px) const {
-    if (map_entity_ == entt::null) return {};
+godot::PackedByteArray zone_gd::ZoneWorld::get_tile_flags() const {
+    PackedByteArray out;
+    if (map_entity_ == entt::null) return out;
     const auto& map = em_.get<zone::MapData>(map_entity_);
-    auto& reg = em_.registry();
-    Ref<Image> img = Image::create(map.width * cell_px, map.height * cell_px,
-                                   false, Image::FORMAT_RGB8);
-
-    const Color floor_c(0.40f, 0.35f, 0.25f), wall_c(0.12f, 0.10f, 0.08f);
-    const Color hero_c (1.00f, 0.90f, 0.20f), npc_c (0.90f, 0.20f, 0.20f);
-    const Color item_c (0.20f, 0.85f, 0.40f), black (0.00f, 0.00f, 0.00f);
-
-    for (int x = 0; x < map.width; ++x)
-        for (int y = 0; y < map.height; ++y) {
-            Color c;
-            if (map.is_visible(x, y))
-                c = map.at(x, y).is_stair_down()
-                    ? Color(0.80f, 0.65f, 0.10f)
-                    : (map.at(x, y).is_walkable() ? floor_c : wall_c);
-            else if (map.is_explored(x, y)) {
-                Color b = map.at(x, y).is_walkable() ? floor_c : wall_c;
-                c = Color(b.r * 0.4f, b.g * 0.4f, b.b * 0.4f);
-            } else {
-                c = black;
-            }
-            img->fill_rect(Rect2i(x*cell_px, y*cell_px, cell_px, cell_px), c);
+    out.resize(map.width * map.height);
+    uint8_t* w = out.ptrw();
+    for (int y = 0; y < map.height; ++y)
+        for (int x = 0; x < map.width; ++x) {
+            const auto& t = map.at(x, y);
+            uint8_t f = 0;
+            if (t.is_walkable())      f |= TF_WALKABLE;
+            if (t.is_stair_down())    f |= TF_STAIR;
+            if (map.is_visible(x, y)) f |= TF_VISIBLE;
+            if (map.is_explored(x, y))f |= TF_EXPLORED;
+            w[y * map.width + x] = f;
         }
+    return out;
+}
 
-    for (auto e : reg.view<zone::ItemComponent, zone::SpatialComponent>()) {
-        const auto& sp = reg.get<zone::SpatialComponent>(e);
-        if (map.is_visible(sp.x, sp.y))
-            img->fill_rect(Rect2i(sp.x*cell_px, sp.y*cell_px, cell_px, cell_px), item_c);
+godot::Array zone_gd::ZoneWorld::get_visible_entities() const {
+    Array out;
+    if (map_entity_ == entt::null) return out;
+    const auto& map = em_.get<zone::MapData>(map_entity_);
+    const auto& reg = em_.registry();
+
+    auto make = [&](int x, int y, const char* kind, int hp, int max_hp) {
+        Dictionary d;
+        d["x"] = x; d["y"] = y;
+        d["kind"] = String(kind);
+        d["hp"] = hp; d["max_hp"] = max_hp;
+        return d;
+    };
+
+    // 繪製序：道具 → NPC → 英雄（後畫的蓋在上面）
+    for (auto e : reg.view<const zone::ItemComponent, const zone::SpatialComponent>()) {
+        const auto& sp = reg.get<const zone::SpatialComponent>(e);
+        if (map.is_visible(sp.x, sp.y)) out.append(make(sp.x, sp.y, "item", 0, 0));
     }
-    for (auto e : reg.view<zone::NpcAiComponent, zone::SpatialComponent>()) {
-        const auto& sp = reg.get<zone::SpatialComponent>(e);
-        if (map.is_visible(sp.x, sp.y))
-            img->fill_rect(Rect2i(sp.x*cell_px, sp.y*cell_px, cell_px, cell_px), npc_c);
+    for (auto e : reg.view<const zone::NpcAiComponent, const zone::SpatialComponent>()) {
+        const auto& sp = reg.get<const zone::SpatialComponent>(e);
+        if (!map.is_visible(sp.x, sp.y)) continue;
+        const auto* hp = reg.try_get<const zone::HealthComponent>(e);
+        out.append(make(sp.x, sp.y, "npc", hp ? hp->hp : 0, hp ? hp->max_hp : 0));
     }
     if (reg.valid(hero_entity_)) {
-        if (const auto* sp = reg.try_get<zone::SpatialComponent>(hero_entity_))
-            if (map.in_bounds(sp->x, sp->y))
-                img->fill_rect(Rect2i(sp->x*cell_px, sp->y*cell_px, cell_px, cell_px), hero_c);
+        if (const auto* sp = reg.try_get<const zone::SpatialComponent>(hero_entity_)) {
+            const auto* hp = reg.try_get<const zone::HealthComponent>(hero_entity_);
+            out.append(make(sp->x, sp->y, "hero",
+                            hp ? std::max(0, hp->hp) : 0, hp ? hp->max_hp : 0));
+        }
     }
-    return img;
+    return out;
 }
 
 // ---- 存讀檔 ----------------------------------------------------------------
@@ -476,6 +575,7 @@ bool zone_gd::ZoneWorld::load_game(const godot::String& path) {
             engine_.add_actor(e);
         }
         game_over_ = false;
+        game_won_  = false;
         recompute_fov();
         return true;
     } catch (...) { return false; }
@@ -491,12 +591,13 @@ void zone_gd::ZoneWorld::set_trace_enabled(bool on) { trace_enabled_ = on; }
 bool zone_gd::ZoneWorld::get_trace_enabled() const { return trace_enabled_; }
 void zone_gd::ZoneWorld::clear_debug_log() { trace_log_.clear(); }
 
+// trace 只進環狀緩衝，不往 stdout 印：前端用 get_debug_log() 讀。
+// （曾經每行都 UtilityFunctions::print，開著玩就把終端機洗版。）
 void zone_gd::ZoneWorld::on_trace(const std::string& line) {
     trace_log_.push_back(line);
     if (trace_log_.size() > 300)
         trace_log_.erase(trace_log_.begin(),
                          trace_log_.begin() + (trace_log_.size() - 300));
-    godot::UtilityFunctions::print(godot::String::utf8(line.c_str()));
 }
 
 godot::String zone_gd::ZoneWorld::get_debug_log() const {

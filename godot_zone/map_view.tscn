@@ -1,21 +1,118 @@
-[gd_scene load_steps=2 format=3 uid="uid://b8opennefiamap0"]
+[gd_scene load_steps=5 format=3 uid="uid://b8opennefiamap0"]
 
 [ext_resource type="Script" path="res://map_view.gd" id="1_mapview"]
+[ext_resource type="Script" path="res://dungeon_view.gd" id="2_dungeonview"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_panel"]
+bg_color = Color(0.05, 0.055, 0.07, 0.82)
+corner_radius_top_left = 3
+corner_radius_top_right = 3
+corner_radius_bottom_left = 3
+corner_radius_bottom_right = 3
+content_margin_left = 8.0
+content_margin_top = 6.0
+content_margin_right = 8.0
+content_margin_bottom = 6.0
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_hpbg"]
+bg_color = Color(0.1, 0.1, 0.11, 0.9)
+corner_radius_top_left = 2
+corner_radius_top_right = 2
+corner_radius_bottom_left = 2
+corner_radius_bottom_right = 2
 
 [node name="MapView" type="Node2D"]
 script = ExtResource("1_mapview")
 
-[node name="Sprite2D" type="Sprite2D" parent="."]
-centered = false
+[node name="DungeonView" type="Node2D" parent="."]
+script = ExtResource("2_dungeonview")
 
 [node name="Camera2D" type="Camera2D" parent="."]
+zoom = Vector2(2, 2)
 
-[node name="CanvasLayer" type="CanvasLayer" parent="."]
+[node name="HUD" type="CanvasLayer" parent="."]
 layer = 1
 
-[node name="InfoLabel" type="Label" parent="CanvasLayer"]
-offset_left = 8.0
+[node name="Stats" type="Label" parent="HUD"]
+offset_left = 12.0
 offset_top = 8.0
-offset_right = 600.0
-offset_bottom = 40.0
-text = "loading..."
+offset_right = 512.0
+offset_bottom = 30.0
+theme_override_colors/font_color = Color(0.86, 0.86, 0.9, 1)
+theme_override_colors/font_shadow_color = Color(0, 0, 0, 0.85)
+theme_override_constants/shadow_offset_x = 1
+theme_override_constants/shadow_offset_y = 1
+theme_override_font_sizes/font_size = 15
+text = "第 1 / 5 層"
+
+[node name="HPBar" type="ProgressBar" parent="HUD"]
+offset_left = 12.0
+offset_top = 32.0
+offset_right = 232.0
+offset_bottom = 52.0
+theme_override_styles/background = SubResource("StyleBoxFlat_hpbg")
+show_percentage = false
+
+[node name="HPText" type="Label" parent="HUD/HPBar"]
+anchor_right = 1.0
+anchor_bottom = 1.0
+horizontal_alignment = 1
+vertical_alignment = 1
+theme_override_colors/font_color = Color(1, 1, 1, 1)
+theme_override_colors/font_shadow_color = Color(0, 0, 0, 0.9)
+theme_override_constants/shadow_offset_x = 1
+theme_override_constants/shadow_offset_y = 1
+theme_override_font_sizes/font_size = 13
+text = "HP"
+
+[node name="MessageLog" type="RichTextLabel" parent="HUD"]
+anchor_top = 1.0
+anchor_bottom = 1.0
+offset_left = 12.0
+offset_top = -164.0
+offset_right = 640.0
+offset_bottom = -12.0
+theme_override_styles/normal = SubResource("StyleBoxFlat_panel")
+theme_override_font_sizes/normal_font_size = 14
+bbcode_enabled = true
+scroll_active = false
+
+[node name="DebugPanel" type="Label" parent="HUD"]
+anchor_left = 1.0
+anchor_right = 1.0
+offset_left = -430.0
+offset_top = 8.0
+offset_right = -8.0
+offset_bottom = 700.0
+theme_override_colors/font_color = Color(0.65, 0.85, 0.65, 1)
+theme_override_colors/font_shadow_color = Color(0, 0, 0, 0.9)
+theme_override_constants/shadow_offset_x = 1
+theme_override_constants/shadow_offset_y = 1
+theme_override_font_sizes/font_size = 11
+visible = false
+
+[node name="Overlay" type="ColorRect" parent="HUD"]
+anchor_right = 1.0
+anchor_bottom = 1.0
+color = Color(0, 0, 0, 0.72)
+mouse_filter = 2
+visible = false
+
+[node name="Center" type="CenterContainer" parent="HUD/Overlay"]
+anchor_right = 1.0
+anchor_bottom = 1.0
+mouse_filter = 2
+
+[node name="Box" type="VBoxContainer" parent="HUD/Overlay/Center"]
+theme_override_constants/separation = 14
+
+[node name="Title" type="Label" parent="HUD/Overlay/Center/Box"]
+horizontal_alignment = 1
+theme_override_font_sizes/font_size = 46
+text = "你死了"
+
+[node name="Hint" type="Label" parent="HUD/Overlay/Center/Box"]
+horizontal_alignment = 1
+theme_override_colors/font_color = Color(0.82, 0.82, 0.86, 1)
+theme_override_font_sizes/font_size = 17
+text = "按 R 重新開始"
