@@ -6,7 +6,32 @@ Hard fork 自 derived/opennefia-cpp/，保留 ECS/FOV/戰鬥，刪除 OpenNefia 
 
 ---
 
+## 進度快照（2026-07-10 可玩化 slice）
+
+**當前理解（一句話）**：這一批把「回合引擎能跑」推進到「一場遊戲可以真的被玩完」——NPC AI 雙軌並存問題已解決（只留 `decide_npc`）、遊戲有明確勝利條件（第 5 層樓梯）與下樓成長、Godot 前端改用圖塊渲染＋HUD／訊息列，並用 headless BFS 機器人驗證整場可達結局。
+
+**已落地（現況）**：
+- **NPC AI 統一為 `decide_npc`**（`src/core/turn/npc_ai.{h,cpp}`）：純決策函式，回傳 `Action`，唯一副作用是更新自己的 `NpcAiComponent` 警覺狀態（LOS + `sight_radius=10`、`alert_memory=6` 回合記憶）。已警覺且相鄰＝撞擊攻擊（不受 `move_chance` 閘門）；否則移動受 `move_chance` 閘門；追擊採大 delta 軸優先、受阻換另一軸；未警覺則隨機徘徊；避開牆與其他 actor。**舊的兩套 AI 都已刪除**：`src/core/systems/npc_ai_system.*`（世界改動型群體 AI）與 `apply_action.cpp` 內的 `decide_chase`（回合引擎原本實際用的最簡追擊 AI）。`apply_action.h` 現在導出 `actor_at()`（原本是檔案內 static，撞擊判定與 NPC 尋路避讓共用）。
+- **勝利條件與下樓成長**（`src/gbind/zone_world_gd.cpp`）：新增 `WIN_FLOOR=5`——走下第 5 層樓梯即通關（`is_game_won()`）。若沒有下樓成長，怪物逐層變強而英雄不變，第 4 層起打死一隻怪要挨滿 20 點傷、第 5 層打不贏——這是數學上不可能過關，因此每下一層樓 `HeroComponent`/`CombatStatsComponent` 會 `+5` 最大 HP、`+5` 治療、`+1` 攻擊（`HERO_MAXHP_PER_FLOOR`/`HERO_HEAL_PER_FLOOR`/`HERO_ATK_PER_FLOOR`），發 `hero_grew(max_hp, attack)` signal。新增 `get_hero_attack()`。英雄死亡不再 `destroy()`（死亡畫面仍要讀 HP/座標），`get_hero_hp()` 對外夾到 0；`restart()` 才真正清掉。
+- **渲染責任移出核心**：`ZoneWorld` 移除 `generate_map_image(cell_px)`；新增 `get_tile_flags()`（PackedByteArray，row-major，bit0 可走/bit1 下樓梯/bit2 本回合可見/bit3 曾探索）與 `get_visible_entities()`（Array[Dictionary]，鍵 `x,y,kind,hp,max_hp`，只含視野內實體，繪製序＝陣列序，英雄最後）。`godot_zone/dungeon_view.gd` 是唯一決定「畫哪個 tile、什麼顏色」的地方，用 Kenney 1-Bit Pack（CC0，`godot_zone/assets/tilesheet.png`，16×16、49 欄）逐格 `draw_texture_rect_region`，霧中戰爭＝同圖塊調暗，不用 shader。
+- **可重現的隨機性**：新增 `set_seed(int)`/`get_seed()`，一個 `std::mt19937 rng_` 同時驅動地圖生成與 NPC AI，固定種子可重現整場；`restart()` 若曾 `set_seed()` 則沿用該種子，否則抽新種子。
+- **前端 HUD 化**（`godot_zone/map_view.gd` + `map_view.tscn`）：場景改為 `DungeonView` + `Camera2D(zoom 2)` + `HUD`（`Stats`／`HPBar+HPText`／`MessageLog` bbcode RichTextLabel／`DebugPanel`（Tab 切換，原本是 `L`）／死亡/勝利 `Overlay`）。所有遊戲回饋改走訊息列，不再 `print()`。移動按鍵不變；`L` 不再切 trace。
+- **signal 變動**：`hero_bumped_npc(String)` → `hero_attacked(damage, target_hp_left)`；`npc_died(String)` → `npc_died()`（無參數）；新增 `hero_hurt(damage, hp_left)`（修掉一個真 bug——過去玩家被 NPC 打中時完全沒有回饋）；新增 `game_won(floor_num)`、`hero_grew(max_hp, attack)`。`world_changed`/`round_finished`/`floor_changed`/`hero_bumped_wall`/`item_picked_up`/`game_over` 不變。
+- **`verify.gd` 重寫驗證方式**：舊版「英雄站著不動、NPC 必須找到並打中他」的斷言已移除——LOS-based AI 下，徘徊中的 NPC 未必找得到靜止的英雄，該假設不再成立。改用 `_run_bot()`：固定種子（`BOT_SEED=12345`）的 BFS 尋路機器人一路殺向樓梯，斷言遊戲必達結局（通關或戰死）、至少到第 2 層、且過程中英雄有掉血；另加 `get_tile_flags()`/`get_visible_entities()` 的欄位斷言。
+
+**測試／驗證（現況數字）**：
+- doctest **33 test case / 129 assertion 全綠**（`./build/bin/zone_test` 實跑確認）。`test_npc_combat.cpp` 已改測 `decide_npc` + `apply_action`（8 case：鄰接攻擊、target 傳入不受建立順序影響、`move_chance=0` 仍必攻擊、`HeroComponent` 序列化辨識、未見英雄不憑空警覺、警覺記憶到期、牆擋追擊換軸、徘徊避讓同類）。
+- headless `verify.gd` → **VERIFY PASSED**（含 BFS 機器人端到端跑完整場）。
+
+**建置鐵則**：建置務必限制並行（如 `-j4`）。曾因無上限 `-j` 觸發 OOM 強制重啟。
+
+**待使用者驗證**：Godot GUI 實機開視窗確認圖塊渲染、HUD/訊息列可讀性、Tab 除錯面板——見 `WAIT_USER.md`。
+
+---
+
 ## 進度快照（2026-06-21 回合系統重構）
+
+> ⚠️ **部分內容已被 2026-07-10 slice 取代**：下方「`decide_chase` 最精簡 NPC 追擊 AI」已刪除（見上一節，改為 `decide_npc`）；`ZoneWorld` 新增的 `get_tile_flags`/`get_visible_entities`/`set_seed` 等介面、`hero_bumped_npc`/`npc_died(String)` 等舊 signal 簽名、測試數字（29/93）皆已變動，以上一節為準。以下段落其餘部分（`TurnEngine`、`Action`、元件、建置鐵則）仍然正確。
 
 **當前理解（一句話）**：回合系統已**重構為最傳統、最精簡的 `TurnEngine`**，作為乾淨的基礎地基；
 先前的能量排程器／JSON 技能／詠唱／DoT 整套實驗已**整體移除**（淨刪約 1300 行）。
