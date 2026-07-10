@@ -17,8 +17,8 @@ namespace zone::tactics {
 // §4–5 的「A. EnergyInstant」。刻意獨立於地城的 TurnEngine，不共用。
 class ActionBar {
 public:
-    static constexpr int kCtToAct    = 1000;  // 行動值達此值才能出手
-    static constexpr int kBaseSpeed  = 100;   // 速度 100 → 每 10 tick 出手一次
+    // 行動值達此值才能出手。速度 100 的單位 → 每 10 tick 出手一次。
+    static constexpr int kCtToAct = 1000;
 
     void add(entt::entity e);
     void remove(entt::entity e);
