@@ -11,6 +11,9 @@
 #include <core/components/hero_component.h>
 #include <core/components/controller_component.h>
 #include <core/components/act_point_component.h>
+#include <core/components/team_component.h>
+#include <core/components/tactics_unit_component.h>
+#include <core/components/turn_gauge_component.h>
 
 namespace zone::serialize {
 
@@ -25,7 +28,11 @@ using AllComponents = entt::type_list<
     WorldStateComponent,
     HeroComponent,
     ControllerComponent,
-    ActPointComponent
+    ActPointComponent,
+    // 戰棋（src/core/tactics/）
+    TeamComponent,
+    TacticsUnitComponent,
+    TurnGaugeComponent
 >;
 
 } // namespace zone::serialize
