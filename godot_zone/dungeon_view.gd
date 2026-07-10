@@ -10,16 +10,7 @@ extends Node2D
 # 圖集：Kenney 1-Bit Pack（CC0），monochrome-transparent_packed.png
 #       16×16 圖塊、49 欄、無間距。單色 → 可用 modulate 任意上色。
 
-const SHEET := preload("res://assets/tilesheet.png")
-const TILE := 16
-
-# 圖塊座標（欄, 列）
-const T_FLOOR := Vector2i(6, 0)
-const T_WALL  := Vector2i(10, 17)
-const T_STAIR := Vector2i(3, 10)
-const T_HERO  := Vector2i(25, 0)
-const T_NPC   := Vector2i(31, 7)
-const T_ITEM  := Vector2i(34, 13)
+const TILE := TileAtlas.TILE
 
 # get_tile_flags() 的位元（與 zone_world_gd.cpp 的 TF_* 對應）
 const TILE_WALKABLE := 1
@@ -48,14 +39,11 @@ var world: ZoneWorld
 func _ready() -> void:
 	texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 
-func _src(t: Vector2i) -> Rect2:
-	return Rect2(t.x * TILE, t.y * TILE, TILE, TILE)
-
 func _cell(x: int, y: int) -> Rect2:
-	return Rect2(x * TILE, y * TILE, TILE, TILE)
+	return TileAtlas.cell(x, y)
 
 func _blit(x: int, y: int, t: Vector2i, c: Color) -> void:
-	draw_texture_rect_region(SHEET, _cell(x, y), _src(t), c)
+	TileAtlas.blit(self, x, y, t, c)
 
 func _remembered(c: Color) -> Color:
 	return Color(c.r * MEMORY_TINT.r, c.g * MEMORY_TINT.g, c.b * MEMORY_TINT.b) * MEMORY_DIM
@@ -84,17 +72,17 @@ func _draw() -> void:
 				bg = _remembered(bg)
 				fg = _remembered(fg)
 			draw_rect(_cell(x, y), bg)
-			_blit(x, y, T_FLOOR if walkable else T_WALL, fg)
+			_blit(x, y, TileAtlas.FLOOR if walkable else TileAtlas.WALL, fg)
 
 			# 樓梯疊在地板上；沒看見時也記得它在哪，這是玩家的目標
 			if f & TILE_STAIR:
-				_blit(x, y, T_STAIR, C_STAIR if visible else _remembered(C_STAIR))
+				_blit(x, y, TileAtlas.STAIR, C_STAIR if visible else _remembered(C_STAIR))
 
 	# ---- 實體（只有視野內的；繪製序由核心決定，英雄最後）----
 	for e in world.get_visible_entities():
 		var ex: int = e["x"]
 		var ey: int = e["y"]
 		match e["kind"]:
-			"item": _blit(ex, ey, T_ITEM, C_ITEM)
-			"npc":  _blit(ex, ey, T_NPC, C_NPC)
-			"hero": _blit(ex, ey, T_HERO, C_HERO)
+			"item": _blit(ex, ey, TileAtlas.POTION, C_ITEM)
+			"npc":  _blit(ex, ey, TileAtlas.RAT, C_NPC)
+			"hero": _blit(ex, ey, TileAtlas.HERO, C_HERO)

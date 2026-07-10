@@ -89,6 +89,7 @@ func _unhandled_input(event: InputEvent) -> void:
 
 	# 存讀檔 / 重開 / 除錯：結局後仍可用
 	match event.keycode:
+		KEY_ESCAPE: get_tree().change_scene_to_file("res://main_menu.tscn"); return
 		KEY_F5:  _do_save();    return
 		KEY_F9:  _do_load();    return
 		KEY_R:   _do_restart(); return
