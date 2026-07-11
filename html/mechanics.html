@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <script>document.documentElement.className="js";</script>
 <title>機制詳解 — gamecore-zone</title>
-<meta name="description" content="gamecore-zone 機制：TurnEngine 回合引擎、apply_action 結算（移動／撞牆／撞擊攻擊／拾取／下樓梯）、NPC 追擊 AI。">
+<meta name="description" content="gamecore-zone 機制：地城 TurnEngine 回合引擎、apply_action 結算、decide_npc 警覺追擊 AI；戰棋 ActionBar 行動值、可達集、apply_tactics_action、decide_tactics、Battle 子狀態機。兩套刻意分離。">
 <link rel="stylesheet" href="assets/style.css">
 </head>
 <body>
@@ -18,6 +18,7 @@
       <a href="architecture.html">怎麼看程式</a>
       <a href="mechanics.html" class="active">機制詳解</a>
       <a href="testing.html">測試與驗證</a>
+      <a href="onboarding.html">接手導覽 ↗</a>
     </nav>
     <button class="menu-btn">☰</button>
   </div>
@@ -29,19 +30,26 @@
     <p class="eyebrow">機制詳解</p>
     <h2>內部到底怎麼運作</h2>
     <p class="lead">
-      三塊核心機制：<strong>TurnEngine</strong> 怎麼跑一輪、<strong>apply_action</strong> 把一個動作結算成什麼、
-      <strong>NPC</strong> 怎麼決定下一步。這是刻意做到最精簡的傳統回合制地基。
+      這個核心裡跑著<strong>兩套刻意分離的回合系統</strong>：<strong style="color:var(--fire)">地城探索</strong>用最傳統精簡的
+      <code>TurnEngine</code>（加入序＝行動序、撞擊即攻擊），<strong style="color:var(--cyan)">戰棋戰鬥</strong>用 ToME4 行動值的
+      <code>ActionBar</code>（速度累積、移動一次＋行動一次）。兩者<strong>不共用、不互相依賴</strong>——共用的只有 ECS／地圖／存讀檔基建。
+      改任何一邊之前，先確認自己站在哪個模組。
     </p>
+    <div class="note">
+      <b class="t">為什麼要分兩套</b>
+      地城側 <code>src/core/turn/</code> 是「教科書式回合制」的乾淨地基，能量／速度差刻意不加。戰棋側 <code>src/core/tactics/</code>
+      才是行動值排程。把行動條加回 <code>TurnEngine</code> 是明確禁止的——它們是兩個平行世界。
+    </div>
   </div>
 
-  <!-- TurnEngine -->
+  <!-- ============ 地城：TurnEngine ============ -->
   <section>
-    <p class="eyebrow">核心</p>
+    <p class="eyebrow">地城 · 核心</p>
     <h2>TurnEngine：一輪怎麼跑</h2>
     <p>維護一條 actor 的 <code>std::list&lt;entt::entity&gt;</code>，<strong>順序＝加入序</strong>（hero 最先加入，故每回合最先行動）。<code>begin_round()</code> 後反覆 <code>step(ctx)</code> 直到 <code>RoundDone</code>。</p>
 
     <div class="grid c3" style="margin:22px 0;">
-      <div class="card cyan reveal">
+      <div class="card fire reveal">
         <span class="k">1</span>
         <div class="ico">≡</div>
         <h3>actor list ＝ 加入序</h3>
@@ -51,13 +59,13 @@
         <span class="k">2</span>
         <div class="ico">◆</div>
         <h3>act_point 行動值</h3>
-        <p>每 actor 本回合<strong>首次輪到</strong>時 <code>ActPointComponent.value</code> 重設為 <code>kActPointFull = 1000</code>，行動後歸 0。目前一回合一次，為未來依成本多次行動預留。</p>
+        <p>每 actor 本回合<strong>首次輪到</strong>時 <code>ActPointComponent</code> 重設為 <code>1000</code>，行動後歸 0。目前一回合一次，為未來依成本多次行動預留。</p>
       </div>
-      <div class="card heal reveal">
+      <div class="card fire reveal">
         <span class="k">3</span>
         <div class="ico">⏸</div>
         <h3>依操控者分派</h3>
-        <p>看 <code>ControllerComponent.kind</code>：<strong>Player</strong> 回 <code>WaitingPlayer</code> 暫停等 <code>submit()</code>；<strong>Self／Faction</strong> 立即 <code>ctx.decide()</code> 取動作並 <code>ctx.resolve()</code>。</p>
+        <p>看 <code>ControllerComponent</code>：<strong>Player</strong> 回 <code>WaitingPlayer</code> 暫停等 <code>submit()</code>；<strong>Self／Faction</strong> 立即 <code>decide()</code> 取動作並 <code>resolve()</code>。</p>
       </div>
     </div>
 
@@ -67,22 +75,22 @@
         <tr><td>StepResult</td><td><code>Acted</code> / <code>WaitingPlayer</code> / <code>RoundDone</code></td></tr>
         <tr><td>EngineCtx</td><td><code>registry&amp; reg</code> ＋ <code>decide</code> / <code>resolve</code> / <code>trace</code> 三個 callback。registry 不由引擎持有，保持引擎純粹可測。</td></tr>
         <tr><td>list 維護</td><td><code>add_actor</code>（重複略過）/ <code>remove_actor</code> / <code>contains</code> / <code>clear</code> / <code>order()</code> / <code>size()</code></td></tr>
-        <tr><td>Action</td><td><code>{ ActionKind kind; int param; }</code>，工廠 <code>idle()/wait()/move(dir)</code>。<strong>沒有 Attack、沒有技能／詠唱</strong>。Move 時 param 是方向編碼。</td></tr>
+        <tr><td>Action</td><td><code>{ ActionKind kind; int param; }</code>，僅 <code>Idle / Move / Wait</code>。<strong>沒有 Attack、沒有技能／詠唱</strong>。Move 時 param 是方向編碼。</td></tr>
       </tbody>
     </table>
 
     <div class="note">
       <b class="t">玩家阻塞</b>
-      輪到 Player 操控者時 <code>step()</code> 回 <code>WaitingPlayer</code> 暫停（即 act() 阻塞等玩家），等 <code>submit(e, action)</code> 後才續跑。
-      多角色時依加入序逐一行動；Self／Faction（Faction 暫等同 Self）則立即解算，不暫停。
+      輪到 Player 操控者時 <code>step()</code> 回 <code>WaitingPlayer</code> 暫停（即阻塞等玩家），等 <code>submit(e, action)</code> 後才續跑。
+      多角色時依加入序逐一行動；Self／Faction 則立即解算，不暫停。
     </div>
   </section>
 
-  <!-- apply_action -->
+  <!-- ============ 地城：apply_action ============ -->
   <section>
-    <p class="eyebrow">結算</p>
+    <p class="eyebrow">地城 · 結算</p>
     <h2>apply_action：一個動作變成什麼</h2>
-    <p><code>apply_action(reg, map, self, action, events)</code> 把單一 Action 結算到世界並發出 <code>ZoneEvent</code>。沒有獨立攻擊指令——<strong>移動進入有 actor 的格子就是攻擊</strong>。</p>
+    <p><code>apply_action()</code> 把單一 Action 結算到世界並發出 <code>ZoneEvent</code>。沒有獨立攻擊指令——<strong>移動進入有 actor 的格子就是攻擊</strong>。<code>actor_at()</code> 查某格站著哪個 actor（撞擊判定與 NPC 尋路避讓共用，公開在標頭）。</p>
 
     <table class="tbl reveal">
       <thead><tr><th>動作 / 情況</th><th>結果</th><th>發出的事件</th></tr></thead>
@@ -99,43 +107,172 @@
     <div class="note warn">
       <b class="t">死亡由呼叫端統一移除</b>
       被殺的目標<strong>只發 <code>ActorDied</code> 事件、不在此 destroy</strong>，由呼叫端（ZoneWorld）統一從 registry 與 actor list 移除。
-      這避免了「被殺者在同一輪後續又被存取」的越界問題。<code>events</code> 參數可為 null（純 core 測試時可不收事件）。
+      這避免了「被殺者在同一輪後續又被存取」的越界問題。
     </div>
 
     <p style="margin-top:16px;">方向編碼在 <code>move_dir.h</code>：<code>encode_dir(dx,dy)</code> / <code>decode_dir(p,dx,dy)</code>，方向 0..8（八方向＋原地）。</p>
   </section>
 
-  <!-- NPC -->
-  <section style="border-bottom:0;">
-    <p class="eyebrow">敵人 AI</p>
-    <h2>NPC 怎麼決定下一步</h2>
-    <p>核心邏輯在 <code>apply_action.cpp</code> 的 <code>decide_chase()</code>，放在 core 所以能直接用 doctest（不用開 Godot）。這是最精簡的 NPC 腦。</p>
+  <!-- ============ 地城：decide_npc ============ -->
+  <section>
+    <p class="eyebrow">地城 · 敵人 AI</p>
+    <h2>decide_npc：NPC 怎麼決定下一步</h2>
+    <p>回合引擎唯一使用的 NPC 決策函式是 <code>src/core/turn/npc_ai.cpp</code> 的
+      <code>decide_npc(reg, map, self, target, rng, cfg)</code>——<strong>純決策函式，回傳 <code>Action</code></strong>，
+      唯一副作用是更新自己 <code>NpcAiComponent</code> 的警覺狀態；世界的改動仍交給 <code>apply_action()</code>。放在 core 所以能直接用 doctest（不用開 Godot）。</p>
 
     <div class="term reveal">
-      <div class="term-bar"><span class="lights"><i class="l-r"></i><i class="l-y"></i><i class="l-g"></i></span> decide_chase 決策</div>
-<div class="term-body"><span class="hl">每個 NPC（ControllerKind::Self）取得回合時：</span>
+      <div class="term-bar"><span class="lights"><i class="l-r"></i><i class="l-y"></i><i class="l-g"></i></span> decide_npc 決策順序</div>
+<div class="term-body"><span class="hl">NpcAiConfig{ sight_radius = 10, alert_memory = 6 }</span>
 
-  有目標（英雄）嗎？
-   ├─ 沒有 ── <span class="hl">Action::wait()</span>（原地等待）
-   │
-   └─ 有 ──── <span class="hl">朝 target 移動一格</span>
-                └─ 相鄰時這一步就是 <span class="en">撞擊攻擊</span>
-                   （移動進入英雄的格子＝攻擊）
+  1  <span class="hl">更新警覺</span>：LOS + sight_radius 內看得見目標 → 警覺
+        └ 看不見時 alert_memory 逐回合遞減，到期解除警覺
+  2  已警覺 <span class="at">且相鄰</span> ── <span class="en">撞擊攻擊</span>（不受 move_chance 閘門）
+  3  擲 <span class="hl">move_chance</span> 骰 ── 沒過就 <span class="hl">Wait</span>
+  4  已警覺 ── <span class="hl">追擊</span>：大 delta 軸優先，受阻換另一軸
+  5  未警覺 ── <span class="hl">四方向隨機徘徊</span>
 
-<span class="wl"># 沒有施法者、沒有 nova、沒有速度差——就是純追擊</span>
-<span class="wl"># ZoneWorld 的 npc_decide(e) 直接呼叫 decide_chase 追英雄</span></div>
+<span class="wl"># 全程避開牆與其他 actor（actor_at 判斷）</span>
+<span class="wl"># 舊的 decide_chase / npc_ai_system 都已刪除，只剩這一套</span></div>
     </div>
 
     <div class="note">
-      <b class="t">實機驗證過</b>
-      headless demo：英雄原地等待，NPC 一路追擊逼近並撞擊攻擊，hero HP 下降，證實追擊與撞擊攻擊一起運作。
-      <code>test_turn_engine.cpp</code> 涵蓋：加入序＝回合序、每 actor act_point 重設 1000、玩家阻塞 submit 後續跑、撞 actor 致死發 ActorDied。
+      <b class="t">勝利條件與成長</b>
+      走下第 5 層樓梯（<code>get_win_floor()</code>）即通關；每下一層英雄成長最大 HP／治療／攻擊，
+      否則怪物逐層變強、英雄不變，第 5 層起會數學上打不贏。
+    </div>
+  </section>
+
+  <!-- ============ 戰棋機制總導言 ============ -->
+  <section>
+    <p class="eyebrow" style="color:var(--cyan)">戰棋 · 平行系統</p>
+    <h2 style="color:var(--cyan)">SRPG 戰棋戰鬥機制</h2>
+    <p>以下全在 <code>src/core/tactics/</code>，與上面的地城 <code>turn/</code> <strong>平行、不共用、不互相依賴</strong>。
+      設計主軸是 <strong>ToME4 行動值模型</strong>：單位靠速度累積行動值出手，一個回合能移動一次＋行動一次，攻擊即結束回合，殲滅一方分勝負。
+      橋樑層是 <code>TacticsBattle : Node</code>，與 <code>ZoneWorld</code> 平行。</p>
+  </section>
+
+  <!-- 戰棋：ActionBar -->
+  <section>
+    <p class="eyebrow" style="color:var(--cyan)">戰棋 · 排程</p>
+    <h2>ActionBar：誰什麼時候出手</h2>
+    <p>ToME4 行動值排程，常數 <code>kCtToAct = 1000</code>。速度快的單位累積得快、出手得勤。</p>
+
+    <div class="grid c2" style="margin:22px 0;">
+      <div class="card cyan reveal">
+        <div class="ico">▸</div>
+        <h3>advance()：累積到達標</h3>
+        <p>每 tick 對所有單位 <code>TurnGaugeComponent.ct += TacticsUnitComponent.speed</code>，第一個 <code>ct &gt;= 1000</code> 者出手。
+          <strong>平手</strong>取 ct 高者；<strong>再平手</strong>取加入序在前者——確定性，不靠亂數。</p>
+      </div>
+      <div class="card cyan reveal">
+        <div class="ico">−</div>
+        <h3>consume()：不歸零，保留溢出</h3>
+        <p>出手後 <code>ct -= 1000</code>（<strong>不是歸零</strong>）。溢出的部分保留下來，所以<strong>快角偶爾能連動兩次</strong>——這正是行動值模型的手感來源。</p>
+      </div>
     </div>
 
     <div class="note">
-      <b class="t">未來可選擴充</b>
-      能量制／先攻排序／詠唱／資料化技能／狀態效果（DoT）／施法者 NPC 等，都是<strong>建立在這個最簡 TurnEngine 之上的未來方向</strong>，
-      設計探索保留在 <code>workflows/idea/</code>，目前都不在程式中。
+      <b class="t">forecast(reg, n)：預告不動真身</b>
+      前端的行動條 UI 要顯示「接下來 n 個出手順序」，靠 <code>forecast()</code> 在 <strong>ct 的複本</strong>上模擬 n 步，
+      <strong>不動真實 ct</strong>。純函式、可測、無副作用。
+    </div>
+  </section>
+
+  <!-- 戰棋：可達集 -->
+  <section>
+    <p class="eyebrow" style="color:var(--cyan)">戰棋 · 移動</p>
+    <h2>可達集：能走到哪些格子</h2>
+    <p><code>compute_move_field()</code> 從單位出發做<strong>四方向 BFS</strong>（每步花費固定為 1，等價 Dijkstra），
+      算出移動範圍內每格的步數場。<code>unit_at()</code> 查某格站著哪個戰棋單位。</p>
+
+    <div class="term reveal">
+      <div class="term-bar"><span class="lights"><i class="l-r"></i><i class="l-y"></i><i class="l-g"></i></span> 阻擋規則</div>
+<div class="term-body">  牆         ── 不可通行
+  其他單位   ── <span class="en">不能穿、也不能停在人身上</span>
+  可達步數   ── 受 TacticsUnitComponent.move_range 上限
+
+  reachable_tiles()  → 前端畫「可移動的藍格」
+  path_to(dst)       → 沿 dist 場回溯路徑
+                       <span class="wl"># 只給前端做走路動畫；核心結算是瞬移</span></div>
+    </div>
+  </section>
+
+  <!-- 戰棋：apply_tactics_action -->
+  <section>
+    <p class="eyebrow" style="color:var(--cyan)">戰棋 · 結算</p>
+    <h2>apply_tactics_action：一個指令變成什麼</h2>
+    <p>結算一個 <code>TacticsAction{ Wait, MoveTo, Attack }</code>。它<strong>只驗證幾何合法性</strong>——
+      可達／射程／是否敵隊——<strong>不管「這回合是否已移動過」</strong>，那是 <code>Battle</code> 子狀態的職責。回傳 bool。</p>
+
+    <table class="tbl reveal">
+      <thead><tr><th>指令</th><th>驗證什麼</th><th>發出的事件</th></tr></thead>
+      <tbody>
+        <tr><td>MoveTo(dst)</td><td>dst 在可達集內（可達性）</td><td><code>Moved</code> / 失敗 <code>Rejected</code></td></tr>
+        <tr><td>Attack(target)</td><td>在 attack_range 內、且屬敵隊（<code>TeamComponent</code>）</td><td><code>Attacked</code>（＋致死 <code>UnitDied</code>）</td></tr>
+        <tr><td>Wait</td><td>—</td><td>—</td></tr>
+      </tbody>
+    </table>
+
+    <div class="note warn">
+      <b class="t">死亡不在此 destroy</b>
+      被殺死的單位<strong>只發 <code>UnitDied</code></strong>，不在此處 destroy（避免迭代失效），由 <code>Battle</code> 統一從行動條移除並 <code>destroy()</code>。
+      事件型別：<code>TacticsEvent{ Moved, Attacked, UnitDied, Rejected }</code>，橋樑層讀取後翻成 Godot signal。
+    </div>
+  </section>
+
+  <!-- 戰棋：decide_tactics -->
+  <section>
+    <p class="eyebrow" style="color:var(--cyan)">戰棋 · 敵人 AI</p>
+    <h2>decide_tactics：戰棋 AI 怎麼選格</h2>
+    <p><code>decide_tactics(reg, map, self, moved, acted)</code>：純決策函式回傳 <code>TacticsAction</code>，與地城 <code>decide_npc()</code> <strong>同一個模式</strong>。
+      射程內就攻擊最脆的目標，否則移動到「進得了射程、但不必貼身」的格子。</p>
+
+    <div class="term reveal">
+      <div class="term-bar"><span class="lights"><i class="l-r"></i><i class="l-y"></i><i class="l-g"></i></span> 選格排序鍵（依序比較）</div>
+<div class="term-body">  1  <span class="hl">deficit</span> = max(最近敵人距離 − attack_range, 0)   越小越好
+        └ 先求「進得了射程」
+
+  2  <span class="hl">nearest</span> = 到最近敵人的距離              <span class="en">越大越好</span>
+        └ <span class="en">關鍵第二鍵</span>：進得了射程就別再靠近
+           少了它，遠程單位會走進近戰射程送死
+
+  3  <span class="hl">steps</span> = 走幾步                          越小越好</div>
+    </div>
+
+    <div class="note">
+      <b class="t">為什麼第二鍵要「越大越好」</b>
+      弓手 attack_range=3。若只看 deficit，射程內任何格都同分，AI 可能挑到緊貼敵人的格子，下一回合就被近戰單位打死。
+      第二鍵讓它在「還打得到」的前提下站得越遠越好——這一條就是遠程單位不送頭的關鍵。
+    </div>
+  </section>
+
+  <!-- 戰棋：Battle -->
+  <section style="border-bottom:0;">
+    <p class="eyebrow" style="color:var(--cyan)">戰棋 · 回合狀態機</p>
+    <h2>Battle：一個單位的回合</h2>
+    <p><code>Battle</code> 是一場戰鬥的子狀態機，管的是<strong>單一單位這一回合的合法性閘門</strong>——
+      這正是 <code>apply_tactics_action</code> 刻意不管的那一塊。</p>
+
+    <div class="term reveal">
+      <div class="term-bar"><span class="lights"><i class="l-r"></i><i class="l-y"></i><i class="l-g"></i></span> 一個單位的回合</div>
+<div class="term-body">  begin_next_turn()  ── 行動條選出 current() 單位
+        │
+        ├─ <span class="hl">移動一次</span>（可選）
+        │       │
+        │       ▼
+        └─ <span class="hl">行動一次</span>：攻擊 / 待機
+                └ <span class="en">攻擊即結束回合</span>
+
+  規則：可「移動後攻擊」，不可「攻擊後再移動」
+  run_ai_turn()：AI 打完 current() 整個回合（最多 3 步防卡死）
+  winner()：殲滅一方分勝負；兩隊同歸於盡不判</div>
+    </div>
+
+    <div class="note">
+      <b class="t">死亡單位的清理</b>
+      死亡單位由 <code>Battle</code> 從行動條移除並 <code>destroy()</code>——core 端 registry 已查不到，
+      前端 <code>tactics_view.gd</code> 靠 <code>_seen_units</code> 快照仍能在訊息列叫出死者名字。
     </div>
 
     <div class="hero-cta" style="margin-top:30px;">

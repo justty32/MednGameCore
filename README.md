@@ -45,7 +45,7 @@ gamecore 三層架構（World / Region / Area）中的第三層——**區域層
 | `tests/` | doctest 測試（`tests/src/`） |
 | `docs/` | 現役文檔（架構與函數說明、進度說明）、`archive/`（舊 session log） |
 | `workflows/` | `idea/`（後續設計主題）、`specs/`（含本次戰棋設計記錄）、`specs/archive/`、`plans/archive/`（歷史設計記錄／規格） |
-| `html/` | 專案導覽網站（總覽／架構／機制／測試驗證） |
+| `html/` | 專案導覽網站：`onboarding.html`（接手儀表板／一頁掃完全貌）＋ `index.html` 總覽／`architecture.html` 架構／`mechanics.html` 機制／`testing.html` 測試驗證 |
 
 ## 建置與測試
 
