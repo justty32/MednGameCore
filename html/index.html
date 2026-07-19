@@ -4,8 +4,8 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <script>document.documentElement.className="js";</script>
-<title>gamecore-zone — 專案導覽</title>
-<meta name="description" content="gamecore-zone：C++/EnTT ECS 核心 + Godot 4.6 GDExtension 前端。兩個平行、互不干涉的場景——最傳統回合制地城探索 roguelike（TurnEngine），與 ToME4 行動值模型的 SRPG 戰棋戰鬥（tactics::Battle）。">
+<title>gamecore-zone — 專案總覽</title>
+<meta name="description" content="gamecore-zone：C++/EnTT ECS 核心 + Godot 4.6 GDExtension 前端。兩個平行獨立場景——傳統回合制地城探索（TurnEngine）與 SRPG 戰棋戰鬥（tactics::Battle）。">
 <link rel="stylesheet" href="assets/style.css">
 </head>
 <body>
@@ -26,25 +26,22 @@
 
 <main class="wrap">
 
-  <!-- HERO -->
   <section class="hero" style="border-bottom:0;">
     <div>
-      <span class="tag">AREA LAYER · 0.0.1-alpha · 兩個平行場景</span>
-      <h1>一顆核心<span class="fire">兩套</span><br>平行的回合制</h1>
+      <span class="tag">AREA LAYER · 兩個平行場景</span>
+      <h1>一顆核心兩套回合制</h1>
       <p class="lead">
-        <strong>gamecore-zone</strong> 是 gamecore 三層架構（World／Region／Area）的最底層——<b>區域層</b>。
-        一顆 C++／EnTT ECS 核心外接 Godot 4.6 前端，跑出<strong>兩個平行、互不干涉的場景</strong>：
-        最傳統回合制的<strong>地城探索 roguelike</strong>（<code>TurnEngine</code>），
-        與 ToME4 行動值模型的 <strong>SRPG 戰棋戰鬥</strong>（<code>tactics::Battle</code>）。
-        兩者共用 ECS／地圖／存讀檔基建，由主選單擇一進入。
+        <strong>gamecore-zone</strong> 是 gamecore 三層架構（World/Region/Area）的區域層。
+        C++20/EnTT ECS 核心 + Godot 4.6 GDExtension 前端，跑出<strong>兩個平行互不干涉</strong>的場景：
+        傳統回合制<strong>地城探索</strong>（<code>TurnEngine</code>）與 ToME4 行動值模型的 <strong>SRPG 戰棋</strong>（<code>tactics::Battle</code>）。
+        共用 ECS/地圖/存讀檔基建，主選單擇一進入。
       </p>
       <div class="hero-cta">
-        <a class="btn primary" href="testing.html">▶ 我要怎麼跑起來看</a>
-        <a class="btn" href="architecture.html">程式長怎樣 →</a>
+        <a class="btn primary" href="testing.html">▶ 跑起來</a>
+        <a class="btn" href="architecture.html">程式結構 →</a>
       </div>
     </div>
 
-    <!-- ASCII 終端機示意 -->
     <div class="term reveal">
       <div class="term-bar">
         <span class="lights"><i class="l-r"></i><i class="l-y"></i><i class="l-g"></i></span>
@@ -65,171 +62,83 @@
     </div>
   </section>
 
-  <!-- 一句話 -->
+  <!-- 兩條線速覽 -->
   <section>
-    <p class="eyebrow">這是什麼</p>
-    <h2>一顆核心，兩條刻意分離的回合線</h2>
-    <p class="lead">
-      同一顆 godot-free 的 C++ 核心底下，養著<strong>兩套刻意分離、不共用、不互相依賴</strong>的回合系統。
-      地城側收斂為<strong>最傳統、最精簡</strong>的 <code>TurnEngine</code>（加入序行動、撞擊攻擊、走下第 5 層通關）；
-      戰棋側是獨立的 <code>tactics::Battle</code>（ToME4 行動值行動條、移動一次＋行動一次的單位回合、殲滅一方分勝負）。
-      兩者共用 ECS／地圖／cereal 存讀檔基建，Godot 前端以主選單 <code>main_menu.tscn</code> 串起兩個場景。
-    </p>
-
-    <div class="stats reveal">
-      <div class="stat"><div class="n">2</div><div class="l">平行獨立場景</div></div>
-      <div class="stat"><div class="n">55</div><div class="l">doctest 測試案例</div></div>
-      <div class="stat"><div class="n">236</div><div class="l">斷言全綠</div></div>
-      <div class="stat"><div class="n">0.0.1</div><div class="l">alpha 版本</div></div>
-    </div>
-    <p style="font-family:var(--code);font-size:12.5px;color:var(--ink-faint);margin-top:10px;">
-      headless VERIFY PASSED ×2（地城／戰棋）· Godot 4.6 mono · zone core 0.0.1-alpha · save/load round-trip 綠
-    </p>
-  </section>
-
-  <!-- 核心能力 · 地城 -->
-  <section>
-    <p class="eyebrow">核心能力 · 地城探索</p>
-    <h2>TurnEngine 這條線有什麼</h2>
+    <p class="eyebrow">兩條平行線</p>
+    <h2>地城 vs 戰棋</h2>
     <div class="grid c2">
       <div class="card fire reveal">
-        <div class="ico">⟳</div>
-        <h3>TurnEngine 回合引擎</h3>
-        <p>一條按<strong>加入序</strong>排的 actor 名單（hero 最先），<code>begin_round()</code> 後反覆 <code>step()</code> 到回合結束；玩家阻塞等 <code>submit()</code>，NPC 立即 <code>decide()</code>。純 core、好測。</p>
+        <div class="ico">⌘</div>
+        <h3>地城探索（TurnEngine）</h3>
+        <p><code>src/core/turn/</code>。教科書式回合制：actor 清單加入序 = 行動序，撞擊即攻擊，下第 5 層通關。2026-06-21 重構後收斂為最簡版本（能量排程/技能/詠唱整套已移除）。</p>
+        <ul style="margin-top:12px;padding-left:18px;color:var(--ink-2);font-size:14px;">
+          <li>NPC AI：decide_npc（LOS 警覺/記憶/追擊/徘徊）</li>
+          <li>FOV：Bresenham 視野計算</li>
+          <li>圖塊渲染（Kenney 1-Bit）+ 霧中戰爭</li>
+          <li>cereal 存讀檔 round-trip</li>
+          <li>BFS 機器人 headless 驗證</li>
+        </ul>
       </div>
-      <div class="card blood reveal">
-        <div class="ico">⚔</div>
-        <h3>撞擊攻擊</h3>
-        <p>沒有獨立的攻擊指令：<strong>移動進入有 actor 的格子＝攻擊</strong>，扣攻擊力傷害，致死發 <code>ActorDied</code>。</p>
-      </div>
-      <div class="card heal reveal">
-        <div class="ico">⌖</div>
-        <h3>NPC AI · decide_npc()</h3>
-        <p>純決策函式：LOS 視野<strong>警覺＋記憶</strong>（<code>alert_memory</code>），相鄰即撞擊攻擊、追擊/徘徊皆避開牆與其他 actor。回合引擎唯一使用的 NPC 腦。</p>
-      </div>
-      <div class="card gold reveal">
-        <div class="ico">↓</div>
-        <h3>勝利條件與成長</h3>
-        <p>走下第 <strong>5 層</strong>樓梯即通關；每下一層英雄成長最大 HP／治療／攻擊，否則怪物逐層變強會導致數學上打不贏。</p>
-      </div>
-    </div>
-  </section>
-
-  <!-- 核心能力 · 戰棋 -->
-  <section>
-    <p class="eyebrow">核心能力 · SRPG 戰棋戰鬥</p>
-    <h2>tactics::Battle 這條線有什麼</h2>
-    <div class="grid c2">
       <div class="card cyan reveal">
         <div class="ico">◈</div>
-        <h3>ActionBar 行動值</h3>
-        <p>ToME4 行動值模型，<code>kCtToAct=1000</code>：每 tick <code>ct += speed</code>，出手後 <code>ct -= 1000</code>（<strong>不歸零</strong>，溢出保留，快角偶爾連動兩次）。</p>
-      </div>
-      <div class="card cyan reveal">
-        <div class="ico">⬡</div>
-        <h3>可達集 · 四方向 BFS</h3>
-        <p>四方向 BFS 算可移動格，<strong>牆與其他單位佔格皆阻擋</strong>——不能穿人、也不能停在人身上。等價 Dijkstra。</p>
-      </div>
-      <div class="card cast reveal">
-        <div class="ico">▣</div>
-        <h3>Battle 單位子回合</h3>
-        <p>一個單位的回合＝<strong>移動一次＋行動一次</strong>，攻擊即結束回合（可先移動再攻擊，不可攻擊後再移動）；殲滅一方即分勝負。</p>
-      </div>
-      <div class="card cast reveal">
-        <div class="ico">◎</div>
-        <h3>敵方 AI · decide_tactics()</h3>
-        <p>射程內攻擊<strong>最脆</strong>目標，否則移動到「進得了射程但不必貼身」的格子——第二排序鍵防止遠程單位貼臉送死。</p>
+        <h3>SRPG 戰棋（ActionBar + Battle）</h3>
+        <p><code>src/core/tactics/</code>。與地城平行不共用回合邏輯。ToME4 行動值模型：kCtToAct=1000，溢出保留不歸零。單位回合 = 移動一次 + 行動一次。</p>
+        <ul style="margin-top:12px;padding-left:18px;color:var(--ink-2);font-size:14px;">
+          <li>可達集：四方向 BFS，牆+單位佔格阻擋</li>
+          <li>AI：decide_tactics（射程內打最脆，遠程不送頭）</li>
+          <li>競技場 20×14，雙方各 3 單位原型</li>
+          <li>22 case 測試全綠</li>
+          <li>TACTICS VERIFY PASSED</li>
+        </ul>
       </div>
     </div>
   </section>
 
-  <!-- 共用 -->
+  <!-- 現狀 -->
   <section>
-    <p class="eyebrow">兩條線共用</p>
-    <h2>底下共用的基建</h2>
-    <div class="grid c3">
-      <div class="card heal reveal">
-        <div class="ico">⇄</div>
-        <h3>cereal 存讀檔</h3>
-        <p>以 cereal 序列化整個 <code>registry</code>（<code>src/core/serialize/</code>），支援 save/load round-trip，已驗證。</p>
-      </div>
-      <div class="card cyan reveal">
-        <div class="ico">▦</div>
-        <h3>ECS / 地圖基建</h3>
-        <p>EnTT registry、component 資料、<code>MapData</code> 稠密網格與 BSP 生成，兩個場景各自取用。</p>
-      </div>
-      <div class="card fire reveal">
-        <div class="ico">⇆</div>
-        <h3>GDExtension 接線</h3>
-        <p>C++ 核心編成原生擴充。<code>ZoneWorld</code>（地城）與 <code>TacticsBattle</code>（戰棋）兩個橋樑類別平行、互不依賴，只吐資料不做渲染決策。</p>
-      </div>
+    <p class="eyebrow">現狀數據</p>
+    <div class="stats reveal">
+      <div class="stat"><div class="n">55</div><div class="l">doctest 案例全綠</div></div>
+      <div class="stat"><div class="n">236</div><div class="l">斷言全綠</div></div>
+      <div class="stat"><div class="n">2</div><div class="l">headless 驗證腳本</div></div>
+      <div class="stat"><div class="n">10</div><div class="l">未 push commits</div></div>
     </div>
-  </section>
 
-  <!-- 做了什麼（時間軸） -->
-  <section>
-    <p class="eyebrow">做了什麼 · 開發歷程</p>
-    <h2>從 hard fork 到兩個可玩場景</h2>
-    <p class="lead">以下是這條分支實際走過的路。每一步都跟著測試綠燈與 headless 驗證前進。</p>
-
-    <div class="timeline">
-      <div class="tl reveal">
-        <div class="step">STEP 01 · 出身</div>
-        <h4>zone_core hard fork</h4>
-        <p>自 <code>opennefia-cpp</code> 砍出區域層，保留 ECS／FOV／戰鬥骨架，移除 OpenNefia 特有機制（事件匯流排、原型管理器、spawn 系統）。</p>
-      </div>
-      <div class="tl reveal">
-        <div class="step">STEP 02 · 接線</div>
-        <h4>GDExtension 建置通過</h4>
-        <p><code>zone_gd</code> 編成原生擴充，Godot headless VERIFY PASSED：60×40 地圖、save/load round-trip 全綠。</p>
-      </div>
-      <div class="tl reveal">
-        <div class="step">STEP 03 · 探索</div>
-        <h4>能量排程器／資料化技能實驗</h4>
-        <p>曾實驗「三種可切換排程器（能量瞬發／能量＋詠唱／純 tick）＋ JSON 資料化技能＋ DoT」。證明了設計空間，但對地基而言太重。</p>
-      </div>
-      <div class="tl reveal">
-        <div class="step">STEP 04 · 重構（2026-06-21）</div>
-        <h4>回合系統重構為最簡 TurnEngine</h4>
-        <p>刻意大幅簡化（<strong>淨刪約 1300 行</strong>）：整套能量排程器／詠唱／JSON 技能／DoT／nova 全部移除，重建為教科書式 <code>TurnEngine</code>＋<code>apply_action</code>。前端改 <code>next_round</code>／<code>player_move</code>／<code>player_wait</code>。</p>
-      </div>
-      <div class="tl reveal">
-        <div class="step">STEP 05 · 可玩化（2026-07-10）</div>
-        <h4>一場遊戲可以真的被玩完</h4>
-        <p>NPC AI 統一為純函式 <code>decide_npc</code>（LOS 警覺＋記憶）；圖塊渲染（Kenney 1-Bit）＋ HUD／訊息列；勝利條件（第 5 層樓梯）與下樓成長；固定種子的 BFS 機器人端到端驗證整場可達結局。</p>
-      </div>
-      <div class="tl reveal">
-        <div class="step">STEP 06 · SRPG 戰棋（2026-07-10）</div>
-        <h4>平行加開一條戰棋線</h4>
-        <p>新增 <code>src/core/tactics/</code> 核心（行動條／可達集／回合子狀態機／AI）、<code>TacticsBattle</code> 橋樑類別、主選單 <code>main_menu.tscn</code> 串起兩個場景；<code>test_tactics.cpp</code> +22 案，戰棋 headless TACTICS VERIFY PASSED。</p>
-      </div>
+    <h3 style="margin-top:24px;">建置</h3>
+    <div class="term reveal" style="margin-top:8px;">
+      <div class="term-bar"><span class="lights"><i class="l-r"></i><i class="l-y"></i><i class="l-g"></i></span> 務必 <code>-j4</code>（無上限 -j 曾吃光 60GiB RAM）</div>
+<div class="term-body"><span class="hl">cmake -S . -B build -DZONE_BUILD_GDEXTENSION=ON</span>
+<span class="hl">cmake --build build --target zone_test -j4</span>
+<span class="wl">./build/bin/zone_test</span>
+<span class="hl">cmake --build build --target zone_gd -j4</span>
+<span class="wl">godot-mono --headless --path godot_zone --import</span>
+<span class="wl">godot-mono --path godot_zone</span></div>
     </div>
   </section>
 
   <!-- 下一步 -->
   <section style="border-bottom:0;">
-    <p class="eyebrow">接下來看哪裡</p>
-    <h2>四條路線</h2>
+    <p class="eyebrow">接下來</p>
     <div class="grid c2">
       <a class="card gold reveal" href="onboarding.html" style="text-decoration:none;color:inherit;">
         <div class="ico">🧭</div>
         <h3>接手導覽 →</h3>
-        <p>一頁掃完全貌：架構鐵律、兩套系統心智模型、「改 X 去哪」路由表、地雷與目前狀態。<strong>剛接手先讀這個。</strong></p>
+        <p>一頁掃完全貌：鐵律、路由表、地雷、還沒收尾的事。剛接手先讀這個。</p>
       </a>
       <a class="card cyan reveal" href="architecture.html" style="text-decoration:none;color:inherit;">
         <div class="ico">🗺</div>
         <h3>怎麼看程式 →</h3>
-        <p>三層架構、檔案地圖、真相層在哪、各資料夾負責什麼。先讀這個就不會迷路。</p>
+        <p>三層架構、檔案地圖、真相層、資料流。不會迷路。</p>
       </a>
       <a class="card fire reveal" href="mechanics.html" style="text-decoration:none;color:inherit;">
         <div class="ico">⚙</div>
         <h3>機制詳解 →</h3>
-        <p>地城 <code>TurnEngine</code> 怎麼跑一輪、<code>apply_action</code> 結算什麼、<code>decide_npc</code> 怎麼決策；戰棋 <code>ActionBar</code>／<code>Battle</code>／<code>decide_tactics</code> 又怎麼運作。</p>
+        <p>TurnEngine 怎麼跑一輪、apply_action 結算什麼、ActionBar/Battle 怎麼運作。</p>
       </a>
       <a class="card heal reveal" href="testing.html" style="text-decoration:none;color:inherit;">
         <div class="ico">✓</div>
         <h3>測試與驗證 →</h3>
-        <p>怎麼 build（記得限制並行）、怎麼跑 doctest、兩支 headless 驗證腳本、怎麼實機操作與按鍵對照表。</p>
+        <p>怎麼 build、跑 doctest、headless 驗證腳本、按鍵對照表。</p>
       </a>
     </div>
   </section>
@@ -238,8 +147,8 @@
 
 <footer>
   <div class="wrap foot-inner">
-    <span>gamecore-zone · Area Layer · 區域層原型</span>
-    <span>建置：CMake + EnTT + cereal · 前端：Godot 4.6 GDExtension</span>
+    <span>gamecore-zone · Area Layer · C++20/EnTT · Godot 4.6 GDExtension</span>
+    <span>doctest 55/236 · headless VERIFY ×2</span>
   </div>
 </footer>
 

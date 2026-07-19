@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <script>document.documentElement.className="js";</script>
 <title>測試與驗證 — gamecore-zone</title>
-<meta name="description" content="怎麼 build（限制並行避免 OOM）、跑 doctest、headless 驗證（地城 + 戰棋）、實機操作 gamecore-zone，含按鍵對照表。">
+<meta name="description" content="build（-j4 避免 OOM）、doctest、headless 驗證（地城+戰棋）、按鍵對照表。">
 <link rel="stylesheet" href="assets/style.css">
 </head>
 <body>
@@ -28,174 +28,108 @@
 
   <div class="page-head">
     <p class="eyebrow">測試與驗證</p>
-    <h2>怎麼確認它真的能跑</h2>
-    <p class="lead">
-      三層驗證，由快到慢、由純到實：<strong>① 單元測試</strong>（純 C++，最快）→
-      <strong>② headless 端到端</strong>（Godot 不開視窗，地城與戰棋各一支腳本）→
-      <strong>③ 實機操作</strong>（開視窗自己玩）。指令框可點擊複製。
-    </p>
+    <h2>三層驗證：單元測試 → headless → 實機</h2>
+    <p class="lead">① doctest（純 C++，不需 Godot）→ ② Godot headless（地城+戰棋各一）→ ③ 開視窗自己玩。</p>
   </div>
 
-  <!-- 先決 -->
+  <!-- 注意 -->
   <section>
-    <p class="eyebrow">先決條件</p>
-    <h2>你需要什麼</h2>
-    <div class="grid c3">
-      <div class="card cyan reveal"><div class="ico">⚙</div><h3>CMake ≥ 3.14</h3><p>＋ 支援 C++20 的編譯器。相依套件（EnTT／cereal／doctest）由 FetchContent 自動抓。</p></div>
-      <div class="card fire reveal"><div class="ico">🎮</div><h3>Godot 4.6（mono）</h3><p>僅 ② ③ 需要。GDExtension 相容版本 ≥ 4.4。</p></div>
-      <div class="card heal reveal"><div class="ico">🌐</div><h3>網路（首次建置）</h3><p>第一次 cmake 會下載相依原始碼，之後就快取在 build/ 裡。</p></div>
+    <div class="note bug">
+      <b class="t">建置鐵律：一律 <code>-j4</code>（或更低）</b>
+      曾因無上限 <code>-j</code> 同時起約 <strong>541</strong> 個編譯程序耗盡 <strong>60 GiB RAM</strong> 觸發 OOM 強制重啟——本專案第一鐵律。
     </div>
   </section>
 
-  <!-- ① 單元測試 -->
+  <!-- ① doctest -->
   <section>
     <p class="eyebrow">第一層 · 最快</p>
-    <h2>① 純 C++ 單元測試（doctest）</h2>
-    <p>不需要 Godot。這會驗證地城的 TurnEngine 回合流程、apply_action 結算、decide_npc 決策，以及戰棋的行動條、可達集、回合子狀態機與 AI 的核心邏輯。</p>
+    <h2>① 純 C++ 單元測試</h2>
+    <p>不需 Godot。涵蓋地城 TurnEngine/apply_action/decide_npc 與戰棋 ActionBar/可達集/子狀態機/AI。</p>
 
-    <div class="cmd-label">設定 + 建置核心測試（務必限制並行）</div>
-<pre data-copy><span class="c"># 在 repo 根目錄；含 GDExtension 開關</span>
-<span class="p">$</span> cmake -S . -B build -D<span class="v">ZONE_BUILD_GDEXTENSION=ON</span>
-<span class="p">$</span> cmake --build build --target zone_test -j4</pre>
-
-    <div class="note bug">
-      <b class="t">為什麼要 -j4（不要裸 -j）</b>
-      曾因無上限 <code>-j</code> 同時開出約 <strong>541 個編譯程序</strong>，瞬間耗盡 <strong>60GiB RAM 觸發 OOM 強制重啟</strong>。
-      建置這個專案<strong>務必限制並行</strong>，例如 <code>-j4</code>，別用裸 <code>-j</code>。這是本專案第一鐵律。
-    </div>
-
-    <div class="cmd-label">跑全部測試</div>
-<pre data-copy><span class="c"># 直接執行測試二進位</span>
+    <pre data-copy><span class="p">$</span> cmake -S . -B build -D<span class="v">ZONE_BUILD_GDEXTENSION=ON</span>
+<span class="p">$</span> cmake --build build --target zone_test <span class="flag">-j4</span>
 <span class="p">$</span> ./build/bin/zone_test
-<span class="c"># 或透過 ctest</span>
+<span class="c"># 或</span>
 <span class="p">$</span> ctest --test-dir build --output-on-failure</pre>
 
-    <div class="note">
-      <b class="t">預期結果</b>
-      <strong><span style="color:var(--heal)">55 個測試案例 · 236 個斷言 · 全綠。</span></strong>
-      <code>test_turn_engine.cpp</code> / <code>test_npc_combat.cpp</code> 涵蓋地城回合與撞擊/追擊；
-      <code>test_tactics.cpp</code> 涵蓋戰棋核心 <strong>22 案</strong>：行動條出手序與溢出保留、可達集阻擋規則、
-      射程與敵我判定、AI 排序鍵、回合子狀態機、AI 打完整場不卡死。
-    </div>
-
-    <p>想針對單一機制，可用 doctest 的子集過濾：</p>
-<pre data-copy><span class="p">$</span> ./build/bin/zone_test --test-case=<span class="v">"*turn_engine*"</span>
-<span class="p">$</span> ./build/bin/zone_test --test-case=<span class="v">"*apply_action*"</span>
-<span class="p">$</span> ./build/bin/zone_test --test-case=<span class="v">"*tactics*"</span></pre>
+    <p><strong>預期：55 測試案例 / 236 斷言 · 全綠。</strong> 過濾子集：<code>--test-case="*turn_engine*"</code>、<code>--test-case="*tactics*"</code>。</p>
   </section>
 
   <!-- ② headless -->
   <section>
     <p class="eyebrow">第二層 · 端到端</p>
-    <h2>② Godot headless 驗證（不開視窗）</h2>
-    <p>這會真的載入原生擴充 <code>libzone_gd.so</code>，驗證 C++ ↔ Godot 整條接線。現況有<strong>兩支</strong>驗證腳本——地城與戰棋各一——都以機器人跑完整局後斷言必達結局。</p>
+    <h2>② Godot headless 驗證</h2>
+    <p>載入原生擴充 <code>libzone_gd.so</code>，驗證 C++ ↔ Godot 整條接線。</p>
 
-    <div class="cmd-label">建置 GDExtension（同樣限制並行）</div>
-<pre data-copy><span class="p">$</span> cmake -S . -B build -D<span class="v">ZONE_BUILD_GDEXTENSION=ON</span>
-<span class="p">$</span> cmake --build build --target zone_gd -j4
-<span class="c"># 建置後會自動把 libzone_gd.so 複製到 godot_zone/bin/（POST_BUILD）</span></pre>
-
-    <div class="cmd-label">先 import 一次，再跑兩支驗證腳本</div>
-<pre data-copy><span class="c"># 首次需先 import 建立 .godot/extension_list.cfg</span>
+    <pre data-copy><span class="p">$</span> cmake --build build --target zone_gd <span class="flag">-j4</span>
+<span class="c"># 首次需 --import</span>
 <span class="p">$</span> godot-mono --headless --path godot_zone --import
-<span class="c"># 地城</span>
+<span class="c"># 地城：BFS 機器人殺向樓梯</span>
 <span class="p">$</span> godot-mono --headless --path godot_zone -s res://verify.gd
-<span class="c"># 戰棋</span>
+<span class="c"># 戰棋：機器人打完整場</span>
 <span class="p">$</span> godot-mono --headless --path godot_zone -s res://verify_tactics.gd</pre>
 
-    <div class="note">
-      <b class="t">預期結果 · 地城</b>
-      <code>verify.gd</code> 用固定種子的 BFS 尋路機器人一路殺向樓梯，斷言遊戲<strong>必達結局</strong>（通關或戰死）、
-      至少到第 2 層、且過程中英雄有掉血，並檢查 <code>get_tile_flags()</code>／<code>get_visible_entities()</code> 欄位，
-      最後印 <strong><span style="color:var(--heal)">VERIFY PASSED</span></strong>。
-    </div>
-
-    <div class="note">
-      <b class="t">預期結果 · 戰棋</b>
-      <code>verify_tactics.gd</code> 用固定種子機器人（能打就打、否則走向最近敵人）打完一整場，斷言<strong>必達勝負</strong>、
-      <code>battle_over</code> signal 與 <code>get_winner()</code> 一致、移動/攻擊/死亡事件皆至少發生一次、戰鬥結束後不再接受指令，
-      最後印 <strong><span style="color:var(--heal)">TACTICS VERIFY PASSED</span></strong>。
-    </div>
+    <p><strong>預期：VERIFY PASSED / TACTICS VERIFY PASSED</strong></p>
 
     <div class="note bug">
-      <b class="t">綠燈也要看它驗的是不是你以為的東西</b>
-      早期 <code>verify.gd</code> 的等待迴圈曾在 submit 後英雄「仍在 waiting」時直接跳過——<strong>指令從沒被執行卻顯示通過</strong>。
-      現版改用真正推進回合的 BFS 機器人斷言到英雄移動與掉血才算數。假通過比紅燈更危險。
+      <b class="t">綠燈也要看它驗什麼</b> 早期 verify.gd 曾在指令從沒執行的情況下顯示通過。現版用真正推進回合的 BFS 機器人斷言英雄移動+掉血才算數。
     </div>
   </section>
 
   <!-- ③ 實機 -->
   <section>
-    <p class="eyebrow">第三層 · 自己玩</p>
-    <h2>③ 開視窗實機操作</h2>
-    <p>main scene 現在是 <strong><code>main_menu.tscn</code></strong>：開遊戲後由主選單選「地城探索」或「戰棋對戰」進入兩個平行場景之一。</p>
+    <p class="eyebrow">第三層</p>
+    <h2>③ 開視窗操作</h2>
+    <pre data-copy><span class="p">$</span> godot-mono --path godot_zone</pre>
+    <p>main scene = <code>main_menu.tscn</code>，選地城或戰棋。</p>
 
-    <div class="cmd-label">啟動</div>
-<pre data-copy><span class="p">$</span> godot-mono --path godot_zone
-<span class="c"># 主選單 main_menu.tscn → 選 地城探索 / 戰棋對戰</span></pre>
-
-    <h3>地城探索 — 操作對照表</h3>
-    <p>最傳統回合制：按一鍵＝英雄行動一次＋本輪所有 NPC 行動一輪。</p>
+    <h3>地城按鍵</h3>
     <table class="tbl reveal">
-      <thead><tr><th>按鍵</th><th>動作</th><th>觀察什麼</th></tr></thead>
+      <thead><tr><th>按鍵</th><th>動作</th></tr></thead>
       <tbody>
-        <tr><td><span class="kbd">W A S D</span> / 方向鍵 / 數字鍵(KP1-9)</td><td>八方向移動（英雄行動＋整輪 NPC）</td><td>撞牆停住、撞到敵人＝攻擊</td></tr>
-        <tr><td>按住方向鍵</td><td>超過 0.5 秒後每 0.08 秒自動走一格</td><td>撞牆/攻擊/被攻擊/拾取/下樓/新怪入視野都會中斷</td></tr>
-        <tr><td><span class="kbd">.</span> / <span class="kbd">KP5</span></td><td>原地等待一回合</td><td>世界推進、看 NPC 逼近</td></tr>
-        <tr><td><span class="kbd">Tab</span></td><td>開關除錯面板（同時開關 trace）</td><td>逐 actor HP、回合數、樓層、NPC 數</td></tr>
-        <tr><td><span class="kbd">K</span></td><td>清空 trace log</td><td>—</td></tr>
-        <tr><td><span class="kbd">R</span></td><td>重開一局</td><td>地圖、英雄、NPC 重新生成</td></tr>
-        <tr><td><span class="kbd">F5</span> / <span class="kbd">F9</span></td><td>存檔 / 讀檔（<code>user://zone_save.bin</code>）</td><td>驗證序列化 round-trip</td></tr>
-        <tr><td><span class="kbd">Esc</span></td><td>回主選單</td><td>—</td></tr>
+        <tr><td>WASD / 方向鍵 / KP1-9</td><td>八方向移動（英雄+整輪 NPC）</td></tr>
+        <tr><td>按住方向鍵</td><td>0.5 秒後每 0.08s 自動走；遇牆/攻擊/下樓/新敵中斷</td></tr>
+        <tr><td>. / KP5</td><td>等待</td></tr>
+        <tr><td>R</td><td>重開</td></tr>
+        <tr><td>F5 / F9</td><td>存檔 / 讀檔</td></tr>
+        <tr><td>Tab</td><td>除錯面板</td></tr>
+        <tr><td>Esc</td><td>回主選單</td></tr>
       </tbody>
     </table>
 
-    <h3>戰棋對戰 — 操作對照表</h3>
-    <p>一個單位的回合＝移動一次＋行動一次，攻擊後不能再移動。</p>
+    <h3>戰棋操作</h3>
     <table class="tbl reveal">
-      <thead><tr><th>操作</th><th>動作</th><th>觀察什麼</th></tr></thead>
+      <thead><tr><th>操作</th><th>動作</th></tr></thead>
       <tbody>
-        <tr><td>滑鼠點<strong>藍色格</strong></td><td>移動到該格</td><td>僅輪到我方單位、且本回合還沒移動過時可用</td></tr>
-        <tr><td>滑鼠點<strong>紅框敵人</strong></td><td>攻擊該單位</td><td>攻擊後回合立即結束</td></tr>
-        <tr><td><span class="kbd">Space</span></td><td>待機／結束回合</td><td>行動條推進、換下一個單位出手</td></tr>
-        <tr><td><span class="kbd">R</span></td><td>重開一場</td><td>競技場、雙方單位重新生成</td></tr>
-        <tr><td><span class="kbd">Esc</span></td><td>回主選單</td><td>—</td></tr>
+        <tr><td>滑鼠點藍格</td><td>移動</td></tr>
+        <tr><td>滑鼠點紅框敵人</td><td>攻擊（攻擊後回合結束）</td></tr>
+        <tr><td>Space</td><td>待機</td></tr>
+        <tr><td>R</td><td>重開</td></tr>
+        <tr><td>Esc</td><td>回主選單</td></tr>
       </tbody>
     </table>
-
-    <h3>建議的驗證劇本</h3>
-    <div class="grid c2">
-      <div class="card cyan reveal"><div class="ico">A</div><h3>地城 · 看回合順序</h3><p>移動或 <span class="kbd">.</span> 等待，開 <span class="kbd">Tab</span> 盯 trace——英雄（加入序最先）先動，接著本輪所有 NPC 依序行動一輪。</p></div>
-      <div class="card fire reveal"><div class="ico">B</div><h3>地城 · 看撞擊攻擊</h3><p>朝相鄰 NPC 走一步＝攻擊，看它 HP 下降；致死時發 <code>npc_died</code>，目標從名單移除。</p></div>
-      <div class="card heal reveal"><div class="ico">C</div><h3>地城 · 下樓成長</h3><p>一路殺向樓梯，走下第 5 層即通關；每下一層英雄成長（最大 HP／治療／攻擊），否則數學上打不贏。</p></div>
-      <div class="card blood reveal"><div class="ico">⚔</div><h3>戰棋 · 移動＋攻擊</h3><p>點藍格走位，再點紅框敵人攻擊——攻擊後回合立即結束；殲滅一方即分勝負。看快角偶爾連動兩次。</p></div>
-    </div>
   </section>
 
-  <!-- 摘要 -->
+  <!-- 一頁速查 -->
   <section style="border-bottom:0;">
-    <p class="eyebrow">一頁速查</p>
-    <h2>三層驗證一次看完</h2>
+    <p class="eyebrow">速查</p>
+    <h2>三層驗證一頁</h2>
     <table class="tbl reveal">
       <thead><tr><th>層級</th><th>指令</th><th>通過長相</th></tr></thead>
       <tbody>
-        <tr><td>① doctest</td><td><code>cmake --build build --target zone_test -j4</code></td><td>55 案 / 236 斷言全綠</td></tr>
-        <tr><td>② headless 地城</td><td><code>godot-mono --headless -s res://verify.gd</code></td><td>VERIFY PASSED（需先 --import）</td></tr>
+        <tr><td>① doctest</td><td><code>cmake --build build --target zone_test -j4 && ./build/bin/zone_test</code></td><td>55/236 全綠</td></tr>
+        <tr><td>② headless 地城</td><td><code>godot-mono --headless -s res://verify.gd</code></td><td>VERIFY PASSED</td></tr>
         <tr><td>② headless 戰棋</td><td><code>godot-mono --headless -s res://verify_tactics.gd</code></td><td>TACTICS VERIFY PASSED</td></tr>
-        <tr><td>③ 實機</td><td><code>godot-mono --path godot_zone</code></td><td>主選單選地城或戰棋，能玩完一局</td></tr>
+        <tr><td>③ 實機</td><td><code>godot-mono --path godot_zone</code></td><td>兩場景可玩完</td></tr>
       </tbody>
     </table>
-    <div class="hero-cta" style="margin-top:30px;">
-      <a class="btn primary" href="index.html">↩ 回總覽</a>
-      <a class="btn" href="mechanics.html">← 機制詳解</a>
-    </div>
   </section>
 
 </main>
 
 <footer>
   <div class="wrap foot-inner">
-    <span>gamecore-zone · Area Layer · 區域層原型</span>
+    <span>gamecore-zone · Area Layer</span>
     <span><a href="index.html">← 回總覽</a></span>
   </div>
 </footer>

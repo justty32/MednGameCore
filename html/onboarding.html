@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>gamecore-zone — 接手導覽</title>
-<meta name="description" content="給接手工程師的一頁式導覽：架構鐵律、兩套平行系統、「改 X 去哪」路由表、建置測試、地雷與目前狀態。">
+<meta name="description" content="給接手工程師的一頁導覽：鐵律、兩套系統、路由表、建置測試、地雷、開放狀態。">
 <style>
 :root{
   --paper:#F4F7FA; --panel:#FFFFFF; --panel-2:#EAEFF4; --sunk:#E3E9F0;
@@ -33,27 +33,6 @@
     --shadow:0 1px 2px rgba(0,0,0,.3), 0 10px 30px -14px rgba(0,0,0,.6);
   }
 }
-:root[data-theme="light"]{
-  --paper:#F4F7FA; --panel:#FFFFFF; --panel-2:#EAEFF4; --sunk:#E3E9F0;
-  --ink:#16202B; --ink-2:#3F515F; --ink-faint:#6E7F8D;
-  --line:#D6DEE7; --line-2:#C4CFDA;
-  --dungeon:#B4711C; --dungeon-bg:#FBF1E2;
-  --tactics:#0C8996; --tactics-bg:#E1F1F3;
-  --alert:#C13A30; --alert-bg:#FBE9E7;
-  --ok:#2C925C; --ok-bg:#E6F3EC; --accent:#2b6cb0;
-  --shadow:0 1px 2px rgba(20,32,45,.05), 0 6px 22px -12px rgba(20,32,45,.22);
-}
-:root[data-theme="dark"]{
-  --paper:#0C1219; --panel:#131C25; --panel-2:#1A2530; --sunk:#0E161E;
-  --ink:#E7EEF4; --ink-2:#AAB9C5; --ink-faint:#71828F;
-  --line:#243441; --line-2:#2F4150;
-  --dungeon:#E3A24C; --dungeon-bg:#241a0c;
-  --tactics:#37B8C5; --tactics-bg:#0d2226;
-  --alert:#EA6A61; --alert-bg:#2a1512;
-  --ok:#51B884; --ok-bg:#0f2419; --accent:#6ba7e0;
-  --shadow:0 1px 2px rgba(0,0,0,.3), 0 10px 30px -14px rgba(0,0,0,.6);
-}
-
 *{box-sizing:border-box;}
 html{-webkit-text-size-adjust:100%;}
 body{
@@ -67,7 +46,6 @@ a:hover{text-decoration:underline;}
 code,kbd{font-family:var(--mono); font-size:.86em;}
 :focus-visible{outline:2px solid var(--accent); outline-offset:2px; border-radius:4px;}
 
-/* ---- top bar ---- */
 .top{
   position:sticky; top:0; z-index:10;
   background:color-mix(in srgb, var(--paper) 88%, transparent);
@@ -95,7 +73,6 @@ code,kbd{font-family:var(--mono); font-size:.86em;}
 .chip .led{width:7px; height:7px; border-radius:50%; display:inline-block;}
 .led.g{background:var(--ok);} .led.a{background:var(--dungeon);} .led.r{background:var(--alert);}
 
-/* ---- section scaffolding ---- */
 section{padding:52px 0; border-bottom:1px solid var(--line);}
 .eyebrow{
   font-family:var(--mono); font-size:12px; letter-spacing:.14em;
@@ -112,41 +89,6 @@ h3{font-size:16px; letter-spacing:-.01em; font-weight:700; margin:0 0 4px;}
 p{margin:.5em 0;}
 .sub{color:var(--ink-2); max-width:70ch; margin:2px 0 26px;}
 
-/* ---- hero ---- */
-.hero{padding-top:44px; display:grid; grid-template-columns:1.05fr .95fr; gap:44px; align-items:center;}
-.hero .tag{
-  font-family:var(--mono); font-size:12px; letter-spacing:.1em; text-transform:uppercase;
-  color:var(--dungeon); font-weight:600;
-}
-.hero .tag b{color:var(--tactics);}
-.hero p{color:var(--ink-2); font-size:16.5px; max-width:52ch;}
-.hero p strong{color:var(--ink);}
-
-/* ---- layer schematic (the law) ---- */
-.schematic{
-  background:var(--panel); border:1px solid var(--line); border-radius:14px;
-  padding:18px; box-shadow:var(--shadow); font-family:var(--mono);
-}
-.sch-cap{font-size:11.5px; letter-spacing:.12em; text-transform:uppercase;
-  color:var(--ink-faint); margin:2px 4px 14px; display:flex; justify-content:space-between;}
-.band{
-  border:1px solid var(--line-2); border-radius:9px; padding:13px 15px; background:var(--sunk);
-  position:relative;
-}
-.band .k{font-size:13px; font-weight:700; color:var(--ink);}
-.band .d{font-size:11.5px; color:var(--ink-faint); margin-top:3px; line-height:1.45;}
-.band.core{border-color:var(--tactics); background:var(--tactics-bg);}
-.band.core .k{color:var(--tactics);}
-.band.bind{border-color:var(--dungeon); background:var(--dungeon-bg);}
-.band.bind .k{color:var(--dungeon);}
-.flow{text-align:center; color:var(--ink-faint); font-size:11px; padding:6px 0; letter-spacing:.05em;}
-.seal{
-  margin:9px 2px; padding:7px 12px; border:1px dashed var(--alert); border-radius:7px;
-  color:var(--alert); font-size:11.5px; text-align:center; font-weight:600;
-  background:var(--alert-bg); line-height:1.4;
-}
-
-/* ---- generic cards / grid ---- */
 .grid2{display:grid; grid-template-columns:1fr 1fr; gap:20px;}
 .card{background:var(--panel); border:1px solid var(--line); border-radius:var(--r);
   padding:20px 20px 18px; box-shadow:var(--shadow);}
@@ -166,14 +108,12 @@ p{margin:.5em 0;}
   padding-top:12px; border-top:1px solid var(--line); word-break:break-all;}
 .pathrow b{color:var(--ink-2);}
 
-/* ---- routing table ---- */
 .tbl-scroll{overflow-x:auto; border:1px solid var(--line); border-radius:var(--r); background:var(--panel); box-shadow:var(--shadow);}
 table{border-collapse:collapse; width:100%; min-width:640px;}
 th,td{text-align:left; padding:13px 16px; border-bottom:1px solid var(--line); vertical-align:top;}
 thead th{font-family:var(--mono); font-size:11px; letter-spacing:.09em; text-transform:uppercase;
   color:var(--ink-faint); font-weight:600; background:var(--panel-2); position:sticky; top:0;}
 tbody tr:last-child td{border-bottom:0;}
-tbody tr{transition:background .12s;}
 tbody tr:hover{background:var(--panel-2);}
 .want{font-weight:600; color:var(--ink); font-size:14.5px;}
 td.loc{font-family:var(--mono); font-size:12.5px; color:var(--ink-2); word-break:break-word;}
@@ -184,26 +124,21 @@ td.loc code{color:var(--ink); background:var(--sunk); padding:1px 5px; border-ra
 .dom.t{color:var(--tactics); background:var(--tactics-bg);}
 .dom.s{color:var(--ink-2); background:var(--panel-2);}
 
-/* ---- code / commands ---- */
 .code{background:var(--sunk); border:1px solid var(--line); border-radius:var(--r);
   font-family:var(--mono); font-size:13px; line-height:1.75; overflow-x:auto; margin:0;}
 .code pre{margin:0; padding:16px 18px;}
 .cmt{color:var(--ink-faint);} .cmd{color:var(--ink);} .flag{color:var(--tactics); font-weight:600;}
 .ok-txt{color:var(--ok); font-weight:600;}
 
-/* ---- callout ---- */
-.callout{
-  display:flex; gap:14px; align-items:flex-start; padding:16px 18px; border-radius:var(--r);
+.callout{display:flex; gap:14px; align-items:flex-start; padding:16px 18px; border-radius:var(--r);
   background:var(--alert-bg); border:1px solid color-mix(in srgb,var(--alert) 35%, var(--line));
-  border-left:4px solid var(--alert); margin:0 0 20px;
-}
+  border-left:4px solid var(--alert); margin:0 0 20px;}
 .callout .ic{font-family:var(--mono); font-weight:800; color:var(--alert); font-size:15px; line-height:1.5;}
 .callout .bd{font-size:14px; color:var(--ink-2); line-height:1.55;}
 .callout .bd b{color:var(--ink);}
 .callout.warn{background:var(--dungeon-bg); border-color:color-mix(in srgb,var(--dungeon) 35%, var(--line)); border-left-color:var(--dungeon);}
 .callout.warn .ic{color:var(--dungeon);}
 
-/* ---- landmine list ---- */
 .mines{display:grid; grid-template-columns:1fr 1fr; gap:16px;}
 .mine{background:var(--panel); border:1px solid var(--line); border-radius:var(--r); padding:16px 18px;
   border-left:4px solid var(--line-2);}
@@ -213,7 +148,6 @@ td.loc code{color:var(--ink); background:var(--sunk); padding:1px 5px; border-ra
 .mine p{margin:0; font-size:13.5px; color:var(--ink-2); line-height:1.55;}
 .mine p code{background:var(--sunk); padding:1px 4px; border-radius:3px; color:var(--ink);}
 
-/* ---- status / open items ---- */
 .status{display:flex; flex-direction:column; gap:12px;}
 .item{display:flex; gap:14px; align-items:flex-start; background:var(--panel);
   border:1px solid var(--line); border-radius:var(--r); padding:15px 18px;}
@@ -225,11 +159,9 @@ td.loc code{color:var(--ink); background:var(--sunk); padding:1px 5px; border-ra
 .item .txt{font-size:14px; color:var(--ink-2); line-height:1.55;}
 .item .txt b{color:var(--ink);} .item .txt code{background:var(--sunk); padding:1px 5px; border-radius:4px; color:var(--ink); font-size:.9em;}
 
-/* ---- reading links ---- */
 .reads{display:grid; grid-template-columns:repeat(2,1fr); gap:12px;}
 .read{display:flex; justify-content:space-between; align-items:center; gap:12px;
-  padding:14px 16px; border:1px solid var(--line); border-radius:var(--r); background:var(--panel);
-  transition:border-color .12s, transform .12s;}
+  padding:14px 16px; border:1px solid var(--line); border-radius:var(--r); background:var(--panel);}
 .read:hover{border-color:var(--accent); text-decoration:none; transform:translateY(-1px);}
 .read .l{min-width:0;}
 .read .t{font-weight:650; color:var(--ink); font-size:14.5px;}
@@ -238,17 +170,11 @@ td.loc code{color:var(--ink); background:var(--sunk); padding:1px 5px; border-ra
 
 footer{padding:30px 0 48px; color:var(--ink-faint); font-size:12.5px; font-family:var(--mono);}
 .foot-in{display:flex; justify-content:space-between; gap:16px; flex-wrap:wrap;}
-
-/* load anim */
-.rise{opacity:0; transform:translateY(10px); animation:rise .5s cubic-bezier(.2,.7,.3,1) forwards;}
+.rise{opacity:0; transform:translateY(10px); animation:rise .5s forwards;}
 @keyframes rise{to{opacity:1; transform:none;}}
-@media (prefers-reduced-motion:reduce){.rise{animation:none; opacity:1; transform:none;}}
-
-@media (max-width:860px){
-  .hero{grid-template-columns:1fr; gap:28px;}
-  .grid2,.mines,.reads{grid-template-columns:1fr;}
-  section{padding:40px 0;}
-}
+@media (prefers-reduced-motion:reduce){.rise{animation:none; opacity:1;}}
+@media (max-width:860px){.hero{grid-template-columns:1fr; gap:28px;}
+  .grid2,.mines,.reads{grid-template-columns:1fr;} section{padding:40px 0;}}
 </style>
 </head>
 <body>
@@ -267,222 +193,105 @@ footer{padding:30px 0 48px; color:var(--ink-faint); font-size:12.5px; font-famil
 
 <main class="wrap">
 
-  <!-- HERO -->
   <section class="hero" style="border-bottom:1px solid var(--line);">
     <div class="rise">
-      <span class="tag">接手導覽 · Area Layer · <b>0.0.1-alpha</b></span>
-      <h1>兩眼一抹黑到<br>抓得住全貌</h1>
-      <p>這是 gamecore 三層架構（World／Region／Area）最底層的<strong>區域層</strong>：一顆
-        <strong>C++17 / EnTT ECS</strong> 核心，外接 <strong>Godot 4.6 GDExtension（mono）</strong>前端。
-        裡頭是<strong>兩個平行、互不干涉</strong>的場景——最傳統的回合制<strong>地城探索</strong> roguelike，
-        與 ToME4 行動值模型的 <strong>SRPG 戰棋戰鬥</strong>——共用 ECS／地圖／存讀檔基建，
-        由主選單擇一進入。</p>
-      <p style="font-size:14px; color:var(--ink-faint); margin-top:14px;">
-        你懂 C++、Godot 摸過一點——這頁不教 ECS，只帶你認這個 repo：一條鐵律、兩套系統、
-        「改東西去哪」、怎麼跑、有哪些坑、還剩什麼沒收尾。</p>
+      <span class="tag">接手導覽 · Area Layer</span>
+      <h1>兩眼一抹黑到抓得住全貌</h1>
+      <p>gamecore 三層架構的最底層區域層。C++17/EnTT ECS 核心 + Godot 4.6 GDExtension 前端。
+      裡頭是<strong>兩個平行互不干涉</strong>的場景——<strong>地城探索</strong>（教科書式回合制）與
+      <strong>SRPG 戰棋</strong>（ToME4 行動值模型）。你懂 C++——這頁不教 ECS，只帶你認 repo。</p>
     </div>
 
-    <!-- The one law, drawn -->
     <div class="schematic rise">
       <div class="sch-cap"><span>唯一架構鐵律</span><span>誰認識 Godot</span></div>
-      <div class="band">
-        <div class="k">godot_zone/ &nbsp;<span style="font-weight:400;color:var(--ink-faint)">GDScript</span></div>
-        <div class="d">場景、鍵鼠輸入、畫面繪製（tile／顏色）。只呼叫橋樑、接 signal。</div>
-      </div>
-      <div class="flow">↓ 呼叫方法 · ↑ Godot signal</div>
-      <div class="band bind">
-        <div class="k">src/gbind/ &nbsp;<span style="font-weight:400;color:var(--ink-faint)">ZoneWorld · TacticsBattle</span></div>
-        <div class="d">唯一認識 Godot 的橋樑層：把 Godot 呼叫翻成核心邏輯、把核心事件翻成 signal。</div>
-      </div>
-      <div class="seal">═══ #include &lt;godot_cpp/…&gt; 只能出現到這裡為止 ═══</div>
-      <div class="band core">
-        <div class="k">src/core/ &nbsp;<span style="font-weight:400;color:var(--ink-faint)">純 C++ / EnTT</span></div>
-        <div class="d">完全 godot-free、可單元測試。turn／tactics／components／systems／maps／serialize。</div>
-      </div>
+      <div class="band"><div class="k">godot_zone/ <span style="font-weight:400;color:var(--ink-faint)">GDScript</span></div><div class="d">場景、輸入、畫面繪製。只呼叫橋樑、接 signal。</div></div>
+      <div class="flow">↓ 呼叫 · ↑ signal</div>
+      <div class="band bind"><div class="k">src/gbind/ <span style="font-weight:400;color:var(--ink-faint)">ZoneWorld · TacticsBattle</span></div><div class="d">唯一認識 Godot 的橋樑層。</div></div>
+      <div class="seal">═══ #include &lt;godot_cpp/…&gt; 只能到這裡 ═══</div>
+      <div class="band core"><div class="k">src/core/ <span style="font-weight:400;color:var(--ink-faint)">純 C++ / EnTT</span></div><div class="d">完全 godot-free、可單元測試。</div></div>
     </div>
   </section>
 
-  <!-- TWO SYSTEMS -->
+  <!-- 兩套系統 -->
   <section>
-    <p class="eyebrow rise">最重要的心智模型</p>
-    <h2 class="rise">兩套刻意分離的回合系統</h2>
-    <p class="sub rise">改任何一邊之前，先確認自己站在哪個模組。兩者<b>不共用、不互相依賴</b>——
-      地城側刻意保持「教科書式最簡」，戰棋側才是行動值排程。把它們混在一起是最大的認知陷阱。</p>
+    <p class="eyebrow">最重要的心智模型</p>
+    <h2>兩套刻意分離的回合系統</h2>
+    <p class="sub">改東西前先確認自己在哪個模組。混在一起是最常見的認知陷阱。</p>
     <div class="grid2">
       <div class="card sys-dungeon rise">
-        <span class="htag"><span class="sw"></span>地城探索 · Dungeon</span>
-        <h3>TurnEngine ＋ 撞擊攻擊</h3>
+        <span class="htag"><span class="sw"></span>地城探索</span>
+        <h3>TurnEngine + 撞擊攻擊</h3>
         <ul>
-          <li><b>回合序＝加入序</b>，英雄最先。<code>begin_round()</code> 後反覆 <code>step()</code> 到回合結束；玩家阻塞等 <code>submit()</code>，NPC 立即 <code>decide()</code>。</li>
-          <li><b>沒有獨立攻擊動作</b>——移動進入有 actor 的格子就是攻擊（<code>apply_action</code>）。</li>
-          <li>NPC 用 <code>decide_npc()</code>：LOS 警覺＋記憶、相鄰即攻、避牆避人。</li>
-          <li>勝利＝走下第 5 層樓梯；每下一層英雄成長，否則數學上打不贏。</li>
-          <li>橋樑：<code>ZoneWorld</code>。前端：<code>map_view.gd</code> + <code>dungeon_view.gd</code>。</li>
+          <li>回合序=加入序，英雄最先。begin_round() → step() 到 RoundDone。</li>
+          <li><b>無獨立攻擊</b>：移動進有 actor 的格 = 攻擊。</li>
+          <li>NPC：decide_npc（LOS 警覺+記憶、相鄰即攻）</li>
+          <li>勝利 = 第 5 層樓梯。每層成長，否則數學上打不贏。</li>
         </ul>
-        <div class="pathrow"><b>核心：</b>src/core/turn/ &nbsp;·&nbsp; <b>橋樑：</b>src/gbind/zone_world_gd.cpp</div>
+        <div class="pathrow"><b>核心：</b>src/core/turn/</div>
       </div>
       <div class="card sys-tactics rise">
-        <span class="htag"><span class="sw"></span>戰棋戰鬥 · Tactics</span>
-        <h3>ActionBar ＋ 單位子回合</h3>
+        <span class="htag"><span class="sw"></span>戰棋戰鬥</span>
+        <h3>ActionBar + 單位子回合</h3>
         <ul>
-          <li><b>ToME4 行動值</b>：<code>kCtToAct=1000</code>，每 tick <code>ct += speed</code>；出手後 <code>ct -= 1000</code>（<b>不歸零</b>，溢出保留，快角偶爾連動兩次）。</li>
-          <li>可達集＝四方向 BFS，牆與其他單位佔格皆阻擋（不能穿、不能停）。</li>
-          <li>一個單位的回合＝<b>移動一次＋行動一次</b>，攻擊即結束回合（<code>Battle</code> 子狀態機）。</li>
-          <li>AI <code>decide_tactics()</code>：射程內打最脆目標，否則走到「進得了射程但不貼身」的格子。</li>
-          <li>橋樑：<code>TacticsBattle : Node</code>。前端：<code>tactics_view.gd</code> + <code>arena_view.gd</code>。</li>
+          <li>ToME4 行動值：kCtToAct=1000，溢出保留，快角可連動。</li>
+          <li>可達集 = 四方向 BFS，牆+單位佔格皆阻擋。</li>
+          <li>單位回合 = 移動一次 + 行動一次，攻擊即結束。</li>
+          <li>AI：射程內打最脆，進射程就停（遠程不送頭）。</li>
         </ul>
-        <div class="pathrow"><b>核心：</b>src/core/tactics/ &nbsp;·&nbsp; <b>橋樑：</b>src/gbind/tactics_battle_gd.cpp</div>
+        <div class="pathrow"><b>核心：</b>src/core/tactics/</div>
       </div>
     </div>
   </section>
 
-  <!-- ROUTING TABLE -->
+  <!-- 路由表 -->
   <section>
-    <p class="eyebrow rise">最實用的一張表</p>
-    <h2 class="rise">我想改 X，該去哪</h2>
-    <p class="sub rise">來自 <code>CODE_MAP.md</code> 的「常用起點」。找到你要改的事，直接跳對應檔案，不用先讀完整個 repo。</p>
+    <p class="eyebrow">最實用的一張表</p>
+    <h2>改 X 去哪</h2>
     <div class="tbl-scroll rise">
       <table>
-        <thead><tr><th>我想改…</th><th>領域</th><th>去這裡</th></tr></thead>
+        <thead><tr><th>我想改…</th><th>去這裡</th></tr></thead>
         <tbody>
-          <tr><td class="want">地城回合邏輯（誰先動、動作怎麼結算）</td><td><span class="dom d">地城</span></td><td class="loc"><code>src/core/turn/</code>（<code>turn_engine.*</code>、<code>apply_action.*</code>）</td></tr>
-          <tr><td class="want">地城 NPC 行為（警覺、追擊、徘徊）</td><td><span class="dom d">地城</span></td><td class="loc"><code>src/core/turn/npc_ai.cpp</code> 的 <code>decide_npc()</code></td></tr>
-          <tr><td class="want">地城地圖生成</td><td><span class="dom d">地城</span></td><td class="loc"><code>src/core/maps/map_gen.cpp</code>（BSP）+ <code>map_data.h</code></td></tr>
-          <tr><td class="want">地城按鍵／HUD／訊息列</td><td><span class="dom d">地城</span></td><td class="loc"><code>godot_zone/map_view.gd</code> + <code>src/gbind/zone_world_gd.*</code></td></tr>
-          <tr><td class="want">畫面上畫哪個 tile／什麼顏色</td><td><span class="dom d">地城</span></td><td class="loc"><code>godot_zone/dungeon_view.gd</code>（唯一決定渲染的地方）</td></tr>
-          <tr><td class="want">戰棋規則（行動條、可達、射程、AI、子回合）</td><td><span class="dom t">戰棋</span></td><td class="loc"><code>src/core/tactics/</code></td></tr>
-          <tr><td class="want">戰棋競技場、單位原型數值</td><td><span class="dom t">戰棋</span></td><td class="loc"><code>src/gbind/tactics_battle_gd.cpp</code> 開頭常數</td></tr>
-          <tr><td class="want">戰棋畫面繪製</td><td><span class="dom t">戰棋</span></td><td class="loc"><code>godot_zone/arena_view.gd</code></td></tr>
-          <tr><td class="want">圖塊座標（兩場景共用）</td><td><span class="dom s">共用</span></td><td class="loc"><code>godot_zone/tile_atlas.gd</code>（唯一真相來源）</td></tr>
-          <tr><td class="want">存讀檔（新增／刪除任何可序列化元件）</td><td><span class="dom s">共用</span></td><td class="loc"><code>src/core/serialize/all_components.h</code> — <b>務必同步</b></td></tr>
-          <tr><td class="want">註冊新的 GDExtension 類別</td><td><span class="dom s">共用</span></td><td class="loc"><code>src/gbind/register_types.cpp</code></td></tr>
+          <tr><td class="want">地城回合邏輯</td><td class="loc"><code>src/core/turn/</code>（turn_engine.*, apply_action.*）</td></tr>
+          <tr><td class="want">地城 NPC 行為</td><td class="loc"><code>src/core/turn/npc_ai.cpp</code> → <code>decide_npc()</code></td></tr>
+          <tr><td class="want">地城地圖生成</td><td class="loc"><code>src/core/maps/map_gen.cpp</code>（BSP）</td></tr>
+          <tr><td class="want">畫面 tile/顏色</td><td class="loc"><code>godot_zone/dungeon_view.gd</code></td></tr>
+          <tr><td class="want">戰棋規則（行動條/可達/AI/子回合）</td><td class="loc"><code>src/core/tactics/</code></td></tr>
+          <tr><td class="want">戰棋單位原型數值</td><td class="loc"><code>src/gbind/tactics_battle_gd.cpp</code> 開頭常數</td></tr>
+          <tr><td class="want">圖塊座標（兩場景共用）</td><td class="loc"><code>godot_zone/tile_atlas.gd</code></td></tr>
+          <tr><td class="want">存檔（新增 serialized component）</td><td class="loc"><code>src/core/serialize/all_components.h</code> — <b>務必同步</b></td></tr>
         </tbody>
       </table>
     </div>
   </section>
 
-  <!-- BUILD / RUN -->
+  <!-- 地雷 -->
   <section>
-    <p class="eyebrow rise">跑起來</p>
-    <h2 class="rise">建置、測試、實機</h2>
-    <div class="callout rise">
-      <span class="ic">▲</span>
-      <span class="bd"><b>建置第一鐵律：一律加並行上限 <code>-j4</code>（或更低）。</b>
-        曾因無上限 <code>-j</code> 同時起約 <b>541</b> 個編譯程序吃光 <b>60 GiB</b> RAM 觸發 OOM 強制重啟。這條沒得商量。</span>
-    </div>
-    <div class="grid2 rise">
-      <div>
-        <h3 style="margin-bottom:10px; font-family:var(--mono); font-size:13px; color:var(--ink-faint); letter-spacing:.08em; text-transform:uppercase;">C++ 核心 / 測試</h3>
-        <div class="code"><pre><span class="cmt"># 設定（含 GDExtension）</span>
-<span class="cmd">cmake -S . -B build <span class="flag">-DZONE_BUILD_GDEXTENSION=ON</span></span>
-
-<span class="cmt"># 核心測試（55 case / 236 assertion）</span>
-<span class="cmd">cmake --build build --target zone_test <span class="flag">-j4</span></span>
-<span class="cmd">./build/bin/zone_test</span>   <span class="cmt"># 或 ctest --test-dir build</span>
-
-<span class="cmt"># 建 GDExtension（自動複製 .so 到 godot_zone/bin/）</span>
-<span class="cmd">cmake --build build --target zone_gd <span class="flag">-j4</span></span></pre></div>
-      </div>
-      <div>
-        <h3 style="margin-bottom:10px; font-family:var(--mono); font-size:13px; color:var(--ink-faint); letter-spacing:.08em; text-transform:uppercase;">Godot 前端 / 端到端驗證</h3>
-        <div class="code"><pre><span class="cmt"># 首次需 import 一次</span>
-<span class="cmd">godot-mono --headless --path godot_zone --import</span>
-
-<span class="cmt"># 開遊戲（main scene = main_menu.tscn）</span>
-<span class="cmd">godot-mono --path godot_zone</span>
-
-<span class="cmt"># headless 端到端驗證</span>
-<span class="cmd">… -s res://verify.gd</span>          <span class="ok-txt"># VERIFY PASSED</span>
-<span class="cmd">… -s res://verify_tactics.gd</span>  <span class="ok-txt"># TACTICS VERIFY PASSED</span></pre></div>
-      </div>
-    </div>
-    <p style="font-family:var(--mono); font-size:12.5px; color:var(--ink-faint); margin-top:16px;">
-      CMake 目標：<b style="color:var(--ink-2)">zone_core</b>（STATIC，godot-free）·
-      <b style="color:var(--ink-2)">zone_test</b>（doctest）·
-      <b style="color:var(--ink-2)">zone_gd</b>（SHARED，連結 zone_core + godot-cpp）。
-      godot-cpp 在 repo 外 <code>../../projects/godot-cpp</code>，可用 <code>-DGODOT_CPP_DIR</code> 覆寫。
-    </p>
-  </section>
-
-  <!-- LANDMINES -->
-  <section>
-    <p class="eyebrow rise">別踩的坑</p>
-    <h2 class="rise">接手前必知的四個地雷</h2>
-    <div class="mines rise">
-      <div class="mine hot">
-        <h4><span class="num">01</span> 無上限 <code>-j</code> 會炸機器</h4>
-        <p>本專案第一鐵律，見上一節。任何 <code>cmake --build</code> 都加 <code>-j4</code>。</p>
-      </div>
-      <div class="mine warm">
-        <h4><span class="num">02</span> <code>TurnEngine</code> 不是佔位品</h4>
-        <p>2026-06-21（<code>e9ed694</code>）已完成整套重寫，收斂成最傳統回合制是<b>設計目標</b>。
-          行動條／能量制刻意另開 <code>src/core/tactics/</code>——<b>不得</b>加回 <code>TurnEngine</code>。</p>
-      </div>
-      <div class="mine hot">
-        <h4><span class="num">03</span> 存檔元件唯一真相來源</h4>
-        <p>新增或刪除任何可序列化 component，<b>務必同步</b> <code>src/core/serialize/all_components.h</code>，否則存讀檔會悄悄壞掉。</p>
-      </div>
-      <div class="mine warm">
-        <h4><span class="num">04</span> 核心不得認識 Godot</h4>
-        <p><code>#include &lt;godot_cpp/…&gt;</code> 只能出現在 <code>src/gbind/</code>。
-          <code>src/core/</code> 若沾到 Godot header，就破壞了可單元測試的地基。</p>
-      </div>
+    <p class="eyebrow">別踩的坑</p>
+    <div class="mines">
+      <div class="mine hot"><h4>01 無上限 -j 會炸機器</h4><p>任何 cmake --build 都加 -j4。541 個編譯程序吃 60GiB RAM 的 OOM 會強制重啟。</p></div>
+      <div class="mine warm"><h4>02 TurnEngine 不是佔位品</h4><p>2026-06-21 重構後收斂成傳統回合制是設計目標。行動值排程另開 tactics/，不得加回 TurnEngine。</p></div>
+      <div class="mine hot"><h4>03 新增 component 必改 all_components.h</h4><p>否則存檔悄悄漏掉該 component，無編譯警告無 runtime crash。</p></div>
+      <div class="mine warm"><h4>04 核心不得認識 Godot</h4><p>#include &lt;godot_cpp&gt; 只能出現在 gbind/。core 沾到就破壞了可單元測試的地基。</p></div>
     </div>
   </section>
 
-  <!-- CURRENT STATE -->
-  <section>
-    <p class="eyebrow rise">接手當下的狀態</p>
-    <h2 class="rise">還沒收尾的事</h2>
-    <p class="sub rise">來自 <code>SESSION-LOG.md</code>。以下都不是 bug，是等人拍板或還沒做的決定。</p>
-    <div class="status rise">
-      <div class="item">
-        <span class="st you">待你決定</span>
-        <span class="txt"><b>本地 main 有 10 個未 push 的 commit</b>（回合重構、可玩化、SRPG 戰棋三個切片）。要不要 push 未定；push 前無人替你決定。</span>
-      </div>
-      <div class="item">
-        <span class="st open">未調校</span>
-        <span class="txt"><b>戰棋數值全是隨手定的初值</b>：單位原型（戰士 <code>18/5</code>、弓手 <code>11/4</code>、斥候 <code>13/3</code>）、<code>WALL_PCT=12</code>、競技場 <code>20×14</code>，都在 <code>tactics_battle_gd.cpp</code> 開頭。已試玩「跑起來還不錯」，但沒針對平衡調過。</span>
-      </div>
-      <div class="item">
-        <span class="st note">範圍外</span>
-        <span class="txt">戰棋後續主題（<b>職業／裝備／地形效果／命中率／反擊／技能／增援／戰中存讀檔</b>）明確<b>不在</b>已落地切片內，見 spec <code>§9</code>。要做屬於新工作。</span>
-      </div>
-      <div class="item">
-        <span class="st note">未追蹤</span>
-        <span class="txt">工作區有一個未追蹤的 <code>.mcp.json</code>（工具設定，非程式碼）。本 session 剛清掉的死檔 <code>data/actions.json</code> 與 <code>ZONE_TEST_DATA_DIR</code> 已從待清單移除。</span>
-      </div>
-    </div>
-  </section>
-
-  <!-- DEEPER READING -->
+  <!-- 開放狀態 -->
   <section style="border-bottom:0;">
-    <p class="eyebrow rise">要更深時往這走</p>
-    <h2 class="rise">這頁之後讀哪裡</h2>
-    <p class="sub rise">這頁是入口；下面才是完整真相層。碰原始碼前，<code>conventions.md</code> 與 <code>CODE_MAP.md</code> 先讀。</p>
-    <div class="reads rise">
-      <a class="read" href="../README.md"><span class="l"><div class="t">README</div><div class="p">../README.md</div></span><span class="arw">→</span></a>
-      <a class="read" href="../workflows/common/code-map/CODE_MAP.md"><span class="l"><div class="t">CODE_MAP — 程式碼導航</div><div class="p">../workflows/common/code-map/CODE_MAP.md</div></span><span class="arw">→</span></a>
-      <a class="read" href="../docs/架構與函數說明.md"><span class="l"><div class="t">架構與函數說明（逐檔／逐函數）</div><div class="p">../docs/架構與函數說明.md</div></span><span class="arw">→</span></a>
-      <a class="read" href="../PROJECT.md"><span class="l"><div class="t">PROJECT — 進度快照</div><div class="p">../PROJECT.md</div></span><span class="arw">→</span></a>
-      <a class="read" href="../workflows/specs/2026-07-10-srpg-tactics-battle-design.md"><span class="l"><div class="t">SRPG 戰棋設計記錄</div><div class="p">../workflows/specs/2026-07-10-srpg-tactics-battle-design.md</div></span><span class="arw">→</span></a>
-      <a class="read" href="../SESSION-LOG.md"><span class="l"><div class="t">SESSION-LOG — 未完狀態</div><div class="p">../SESSION-LOG.md</div></span><span class="arw">→</span></a>
-      <a class="read" href="../CLAUDE.md"><span class="l"><div class="t">CLAUDE.md — Agent 專案備忘／鐵律</div><div class="p">../CLAUDE.md</div></span><span class="arw">→</span></a>
-      <a class="read" href="index.html"><span class="l"><div class="t">舊版導覽站（行銷式，已過期）</div><div class="p">./index.html · 內容停在 2026-06-21</div></span><span class="arw">→</span></a>
+    <p class="eyebrow">接手當下</p>
+    <div class="status">
+      <div class="item"><span class="st you">待決定</span><span class="txt"><b>10 個未 push commit</b>（回合重構、可玩化、戰棋）。尚未決定是否 push。</span></div>
+      <div class="item"><span class="st open">未調校</span><span class="txt"><b>戰棋數值隨手定的初值</b>：單位原型、WALL_PCT、競技場尺寸都在 tactics_battle_gd.cpp 開頭。</span></div>
+      <div class="item"><span class="st note">範圍外</span><span class="txt">戰棋後續主題（職業/裝備/地形效果/命中率/反擊/技能/增援/戰中存讀）不在已落地切片內。</span></div>
     </div>
   </section>
 
 </main>
 
 <footer>
-  <div class="wrap foot-in">
-    <span>gamecore·zone — Area Layer · 接手導覽</span>
-    <span>C++17 / EnTT / cereal · Godot 4.6 GDExtension（mono）</span>
-  </div>
+  <div class="wrap foot-inner"><span>gamecore·zone — Area Layer</span><span>C++17/EnTT · Godot 4.6 GDExtension</span></div>
 </footer>
 
 <script>
-// 尊重使用者主題切換（data-theme 覆寫 media query）；此頁本身不放切換鈕，交給檢視器。
 document.querySelectorAll('.rise').forEach(function(el,i){
   el.style.animationDelay=Math.min(i*45,360)+'ms';
 });
