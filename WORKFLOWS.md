@@ -2,7 +2,7 @@
 
 使用者說要做某件事 → 從這張表選對應工作流 → 讀入口檔 → 再動手。
 
-先讀 [PRINCIPLES.md](PRINCIPLES.md) 的跳流程規則：小改可直接做，工作流只在它能降低交接、同步或設計風險時啟用。
+跳流程規則見 [DEV-GUIDE.md](DEV-GUIDE.md)：小改可直接做，工作流只在它能降低交接、同步或設計風險時啟用。
 
 ## 你想做什麼 → 用哪個工作流
 
@@ -38,8 +38,6 @@ idea → roadmap → spec → plan → feature-dev
 - open/in-flight 進度 → [SESSION-LOG.md](SESSION-LOG.md)
 - 等使用者親自做/驗證 → [WAIT_USER.md](WAIT_USER.md)
 
-## 維護
+## 結構整理
 
-- 導入既有 repo → [ADOPTION.md](ADOPTION.md)
-- 定期清理/刪除過時流程 → [MAINTENANCE.md](MAINTENANCE.md)
-- 可選 agent commands → [commands/README.md](commands/README.md)
+- 重構/拆檔/長出新子工作流時的結構原則、跳流程規則、Done when 細則 → [DEV-GUIDE.md](DEV-GUIDE.md)（被動參考）

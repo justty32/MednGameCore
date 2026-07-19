@@ -12,7 +12,7 @@
 ## 先讀哪裡
 
 - 使用者要你動手做某件事 → [WORKFLOWS.md](WORKFLOWS.md)：依意圖派發到對應工作流。
-- 想看 repo 結構/事實 → [README.md](README.md)；深入現況與架構 → [PROJECT.md](PROJECT.md)、[docs/架構與函數說明.md](docs/架構與函數說明.md)。
+- 想看 repo 頂層結構 → [INDEX.md](INDEX.md)：頂層目錄地圖；深入現況與架構 → [README.md](README.md)、[PROJECT.md](PROJECT.md)、[docs/架構與函數說明.md](docs/架構與函數說明.md)。
 - 碰原始碼 → 先讀 [workflows/common/conventions.md](workflows/common/conventions.md)，再讀 [CODE_MAP](workflows/common/code-map/CODE_MAP.md)。
 
 ## Always-on 鐵律
@@ -22,7 +22,7 @@
 - 未經使用者確認，不 push、不開新大型工作。
 - 不 revert 使用者或其他 agent 的未確認變更；遇到衝突先停下說明。
 - 各工作流的具體流程在自己的 README，不在本檔重複。
-- 小事可以跳流程；完整規則見 [PRINCIPLES.md](PRINCIPLES.md)。
+- 小事可以跳流程；跳流程規則與 Done when 細則見 [DEV-GUIDE.md](DEV-GUIDE.md)。
 - 非微小工作先定義 `Done when:`。
 - 需要使用者親自驗證、外部環境、權限、實機、帳號或手動操作時，記到 [WAIT_USER.md](WAIT_USER.md)。
 - 跨 session 的 open 狀態記到 [SESSION-LOG.md](SESSION-LOG.md) 或對應工作流的 `session-log.md`。
