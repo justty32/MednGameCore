@@ -1,0 +1,14 @@
+{
+  "mcpServers": {
+    "godot": {
+      "type": "stdio",
+      "command": "node",
+      "args": [
+        "/home/lorkhan/tools/godot-mcp/build/index.js"
+      ],
+      "env": {
+        "GODOT_PATH": "/usr/lib/godot-mono/godot.linuxbsd.editor.x86_64.mono"
+      }
+    }
+  }
+}
