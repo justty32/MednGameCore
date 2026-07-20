@@ -148,7 +148,7 @@ unit id ＝ `entt::to_integral(entity)`，橋樑層維護 id ↔ entity 對照�
 > 涵蓋上列每一點）；`godot-mono --headless --path godot_zone -s res://verify.gd` →
 > `VERIFY PASSED`；`-s res://verify_tactics.gd` → `TACTICS VERIFY PASSED`（機器人打完一場，
 > `battle_over` signal 的隊伍與 `get_winner()` 一致）；`tactics_view.gd` 有勝利/敗北 overlay
-> 且使用者已實機試玩兩個場景。CODE_MAP／`docs/架構與函數說明.md`／`PROJECT.md`／
+> 且使用者已實機試玩兩個場景。CODE_MAP／`docs/架構與函數說明.md`／
 > `README.md` 已同步。
 
 ## 9. 明確不包含

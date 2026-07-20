@@ -73,7 +73,7 @@ src/gbind/zone_world_gd.*         ← 萎縮成薄殼
 - 04 的 snapshot 介面有乾淨落點（ZoneSession 產 struct，gbind 轉 Dictionary）。
 - 05 的 Region/World 層將來掛的是 ZoneSession（純 C++ 可組合），不是 Godot Node。
 
-### 邊界守則（寫進 PROJECT.md 的一句話版本）
+### 邊界守則（一句話版本，現已收於 AGENTS.md 本地專案規則）
 
 - core 層禁 include godot_cpp（現有 CMake 已用目錄隔離保證，維持）。
 - gbind 層禁遊戲規則：只准「型別轉譯 + signal + Node 生命週期」。檢查法：gbind 出現

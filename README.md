@@ -39,10 +39,10 @@ gamecore 三層架構（World / Region / Area）中的第三層——**區域層
 
 | 路徑 | 內容 |
 |------|------|
-| `src/core/` | 純 C++/EnTT ECS 核心（godot-free）：`turn/`（地城回合引擎、動作、`npc_ai.*` NPC 決策）、`tactics/`（戰棋行動條、可達集、AI、回合子狀態機）、`components/`、`systems/`（FOV）、`maps/`（BSP 地圖生成）、`serialize/`、`ecs/`、`util/` |
-| `src/gbind/` | Godot GDExtension 綁定：`ZoneWorld`（地城，`zone_world_gd.{h,cpp}`）、`TacticsBattle`（戰棋，`tactics_battle_gd.{h,cpp}`），兩者平行、互不依賴，只吐資料不做渲染決策 |
-| `godot_zone/` | Godot 專案：`main_menu.tscn`（main scene，選地城／戰棋）、`map_view.tscn`+`map_view.gd`（地城 HUD/輸入）、`dungeon_view.gd`（地城圖塊繪製）、`tactics_view.tscn`+`tactics_view.gd`（戰棋操作）、`arena_view.gd`（戰棋圖塊繪製）、`tile_atlas.gd`（兩場景共用的圖塊座標）、`assets/`（Kenney 1-Bit Pack 圖塊）、`verify.gd`／`verify_tactics.gd`、`bin/`（編譯產物 `.so`，gitignore） |
-| `tests/` | doctest 測試（`tests/src/`） |
+| `projects/core/src/core/` | 純 C++/EnTT ECS 核心（godot-free）：`turn/`（地城回合引擎、動作、`npc_ai.*` NPC 決策）、`tactics/`（戰棋行動條、可達集、AI、回合子狀態機）、`components/`、`systems/`（FOV）、`maps/`（BSP 地圖生成）、`serialize/`、`ecs/`、`util/` |
+| `projects/core/src/gbind/` | Godot GDExtension 綁定：`ZoneWorld`（地城，`zone_world_gd.{h,cpp}`）、`TacticsBattle`（戰棋，`tactics_battle_gd.{h,cpp}`），兩者平行、互不依賴，只吐資料不做渲染決策 |
+| `projects/godot_zone/` | Godot 專案：`main_menu.tscn`（main scene，選地城／戰棋）、`map_view.tscn`+`map_view.gd`（地城 HUD/輸入）、`dungeon_view.gd`（地城圖塊繪製）、`tactics_view.tscn`+`tactics_view.gd`（戰棋操作）、`arena_view.gd`（戰棋圖塊繪製）、`tile_atlas.gd`（兩場景共用的圖塊座標）、`assets/`（Kenney 1-Bit Pack 圖塊）、`verify.gd`／`verify_tactics.gd`、`bin/`（編譯產物 `.so`，gitignore） |
+| `projects/tests/` | doctest 測試（獨立專案，`projects/tests/src/`，find/link 已建好的 `zone_core`） |
 | `docs/` | 現役文檔（架構與函數說明、進度說明）、`archive/`（舊 session log） |
 | `workflows/` | `idea/`（後續設計主題）、`specs/`（含本次戰棋設計記錄）、`specs/archive/`、`plans/archive/`（歷史設計記錄／規格） |
 | `html/` | 專案導覽網站：`onboarding.html`（接手儀表板／一頁掃完全貌）＋ `index.html` 總覽／`architecture.html` 架構／`mechanics.html` 機制／`testing.html` 測試驗證 |
@@ -51,34 +51,39 @@ gamecore 三層架構（World / Region / Area）中的第三層——**區域層
 
 > **建置鐵則：務必限制並行（如 `-j4`）。** 曾因無上限 `-j` 同時啟動約 541 個編譯程序耗盡 60GiB RAM 觸發 OOM 強制重啟。
 
+兩個獨立 C++ 專案，先建核心、再建測試（測試會 find/link 上一步產出的 `zone_core`）：
+
 ```bash
-# 設定（含 GDExtension）
-cmake -S . -B build -DZONE_BUILD_GDEXTENSION=ON
+# 1) 核心庫 zone_core（godot-free STATIC）
+cmake -S projects/core -B projects/core/build
+cmake --build projects/core/build -j4
 
-# 跑測試（doctest：55 test case / 236 assertion 全綠）
-cmake --build build --target zone_test -j4
-./build/bin/zone_test      # 或 ctest --test-dir build
+# 2) 測試（doctest：55 test case / 236 assertion 全綠）
+cmake -S projects/tests -B projects/tests/build
+cmake --build projects/tests/build -j4
+./projects/tests/build/bin/zone_test      # 或 ctest --test-dir projects/tests/build
 
-# 建置 GDExtension（建置後自動把 libzone_gd.so 複製到 godot_zone/bin/）
-cmake --build build --target zone_gd -j4
+# 3) 選用：GDExtension（建置後自動把 libzone_gd.so 複製到 projects/godot_zone/bin/）
+cmake -S projects/core -B projects/core/build -DZONE_BUILD_GDEXTENSION=ON
+cmake --build projects/core/build --target zone_gd -j4
 ```
 
-CMake 目標：`zone_core`（STATIC，godot-free）／`zone_test`（doctest）／`zone_gd`（SHARED，GDExtension，連結 zone_core + godot-cpp）。
+CMake 目標分屬兩個獨立專案：`projects/core` 產出 `zone_core`（STATIC，godot-free）與選用的 `zone_gd`（SHARED，GDExtension，連結 zone_core + godot-cpp）；`projects/tests` 產出 `zone_test`（doctest，連結已建好的 zone_core）。
 
 ## 在 Godot 跑
 
 ```bash
 # 首次需先 import 一次（建立 .godot/extension_list.cfg）
-godot-mono --headless --path godot_zone --import
+godot-mono --headless --path projects/godot_zone --import
 
 # 開遊戲（main scene 是 main_menu.tscn：選地城探索或戰棋對戰）
-godot-mono --path godot_zone
+godot-mono --path projects/godot_zone
 
 # headless 端到端驗證 → VERIFY PASSED（地城）
-godot-mono --headless --path godot_zone -s res://verify.gd
+godot-mono --headless --path projects/godot_zone -s res://verify.gd
 
 # headless 端到端驗證 → TACTICS VERIFY PASSED（戰棋）
-godot-mono --headless --path godot_zone -s res://verify_tactics.gd
+godot-mono --headless --path projects/godot_zone -s res://verify_tactics.gd
 ```
 
 ## 操作按鍵

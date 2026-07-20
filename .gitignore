@@ -1,7 +1,6 @@
-# 建置產物 (CMake)
-/build/
+# 建置產物 (CMake) — 各專案 build/ 皆在 projects/*/build/（build*/ 無斜線，任一層皆命中）
 build*/
-godot_zone/bin/
+projects/godot_zone/bin/
 
 # 編譯中間檔 / 二進位
 *.o

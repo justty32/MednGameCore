@@ -204,11 +204,11 @@ footer{padding:30px 0 48px; color:var(--ink-faint); font-size:12.5px; font-famil
 
     <div class="schematic rise">
       <div class="sch-cap"><span>唯一架構鐵律</span><span>誰認識 Godot</span></div>
-      <div class="band"><div class="k">godot_zone/ <span style="font-weight:400;color:var(--ink-faint)">GDScript</span></div><div class="d">場景、輸入、畫面繪製。只呼叫橋樑、接 signal。</div></div>
+      <div class="band"><div class="k">projects/godot_zone/ <span style="font-weight:400;color:var(--ink-faint)">GDScript</span></div><div class="d">場景、輸入、畫面繪製。只呼叫橋樑、接 signal。</div></div>
       <div class="flow">↓ 呼叫 · ↑ signal</div>
-      <div class="band bind"><div class="k">src/gbind/ <span style="font-weight:400;color:var(--ink-faint)">ZoneWorld · TacticsBattle</span></div><div class="d">唯一認識 Godot 的橋樑層。</div></div>
+      <div class="band bind"><div class="k">projects/core/src/gbind/ <span style="font-weight:400;color:var(--ink-faint)">ZoneWorld · TacticsBattle</span></div><div class="d">唯一認識 Godot 的橋樑層。</div></div>
       <div class="seal">═══ #include &lt;godot_cpp/…&gt; 只能到這裡 ═══</div>
-      <div class="band core"><div class="k">src/core/ <span style="font-weight:400;color:var(--ink-faint)">純 C++ / EnTT</span></div><div class="d">完全 godot-free、可單元測試。</div></div>
+      <div class="band core"><div class="k">projects/core/src/core/ <span style="font-weight:400;color:var(--ink-faint)">純 C++ / EnTT</span></div><div class="d">完全 godot-free、可單元測試。</div></div>
     </div>
   </section>
 
@@ -227,7 +227,7 @@ footer{padding:30px 0 48px; color:var(--ink-faint); font-size:12.5px; font-famil
           <li>NPC：decide_npc（LOS 警覺+記憶、相鄰即攻）</li>
           <li>勝利 = 第 5 層樓梯。每層成長，否則數學上打不贏。</li>
         </ul>
-        <div class="pathrow"><b>核心：</b>src/core/turn/</div>
+        <div class="pathrow"><b>核心：</b>projects/core/src/core/turn/</div>
       </div>
       <div class="card sys-tactics rise">
         <span class="htag"><span class="sw"></span>戰棋戰鬥</span>
@@ -238,7 +238,7 @@ footer{padding:30px 0 48px; color:var(--ink-faint); font-size:12.5px; font-famil
           <li>單位回合 = 移動一次 + 行動一次，攻擊即結束。</li>
           <li>AI：射程內打最脆，進射程就停（遠程不送頭）。</li>
         </ul>
-        <div class="pathrow"><b>核心：</b>src/core/tactics/</div>
+        <div class="pathrow"><b>核心：</b>projects/core/src/core/tactics/</div>
       </div>
     </div>
   </section>
@@ -251,14 +251,14 @@ footer{padding:30px 0 48px; color:var(--ink-faint); font-size:12.5px; font-famil
       <table>
         <thead><tr><th>我想改…</th><th>去這裡</th></tr></thead>
         <tbody>
-          <tr><td class="want">地城回合邏輯</td><td class="loc"><code>src/core/turn/</code>（turn_engine.*, apply_action.*）</td></tr>
-          <tr><td class="want">地城 NPC 行為</td><td class="loc"><code>src/core/turn/npc_ai.cpp</code> → <code>decide_npc()</code></td></tr>
-          <tr><td class="want">地城地圖生成</td><td class="loc"><code>src/core/maps/map_gen.cpp</code>（BSP）</td></tr>
-          <tr><td class="want">畫面 tile/顏色</td><td class="loc"><code>godot_zone/dungeon_view.gd</code></td></tr>
-          <tr><td class="want">戰棋規則（行動條/可達/AI/子回合）</td><td class="loc"><code>src/core/tactics/</code></td></tr>
-          <tr><td class="want">戰棋單位原型數值</td><td class="loc"><code>src/gbind/tactics_battle_gd.cpp</code> 開頭常數</td></tr>
-          <tr><td class="want">圖塊座標（兩場景共用）</td><td class="loc"><code>godot_zone/tile_atlas.gd</code></td></tr>
-          <tr><td class="want">存檔（新增 serialized component）</td><td class="loc"><code>src/core/serialize/all_components.h</code> — <b>務必同步</b></td></tr>
+          <tr><td class="want">地城回合邏輯</td><td class="loc"><code>projects/core/src/core/turn/</code>（turn_engine.*, apply_action.*）</td></tr>
+          <tr><td class="want">地城 NPC 行為</td><td class="loc"><code>projects/core/src/core/turn/npc_ai.cpp</code> → <code>decide_npc()</code></td></tr>
+          <tr><td class="want">地城地圖生成</td><td class="loc"><code>projects/core/src/core/maps/map_gen.cpp</code>（BSP）</td></tr>
+          <tr><td class="want">畫面 tile/顏色</td><td class="loc"><code>projects/godot_zone/dungeon_view.gd</code></td></tr>
+          <tr><td class="want">戰棋規則（行動條/可達/AI/子回合）</td><td class="loc"><code>projects/core/src/core/tactics/</code></td></tr>
+          <tr><td class="want">戰棋單位原型數值</td><td class="loc"><code>projects/core/src/gbind/tactics_battle_gd.cpp</code> 開頭常數</td></tr>
+          <tr><td class="want">圖塊座標（兩場景共用）</td><td class="loc"><code>projects/godot_zone/tile_atlas.gd</code></td></tr>
+          <tr><td class="want">存檔（新增 serialized component）</td><td class="loc"><code>projects/core/src/core/serialize/all_components.h</code> — <b>務必同步</b></td></tr>
         </tbody>
       </table>
     </div>

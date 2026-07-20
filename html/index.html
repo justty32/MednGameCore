@@ -70,7 +70,7 @@
       <div class="card fire reveal">
         <div class="ico">⌘</div>
         <h3>地城探索（TurnEngine）</h3>
-        <p><code>src/core/turn/</code>。教科書式回合制：actor 清單加入序 = 行動序，撞擊即攻擊，下第 5 層通關。2026-06-21 重構後收斂為最簡版本（能量排程/技能/詠唱整套已移除）。</p>
+        <p><code>projects/core/src/core/turn/</code>。教科書式回合制：actor 清單加入序 = 行動序，撞擊即攻擊，下第 5 層通關。2026-06-21 重構後收斂為最簡版本（能量排程/技能/詠唱整套已移除）。</p>
         <ul style="margin-top:12px;padding-left:18px;color:var(--ink-2);font-size:14px;">
           <li>NPC AI：decide_npc（LOS 警覺/記憶/追擊/徘徊）</li>
           <li>FOV：Bresenham 視野計算</li>
@@ -82,7 +82,7 @@
       <div class="card cyan reveal">
         <div class="ico">◈</div>
         <h3>SRPG 戰棋（ActionBar + Battle）</h3>
-        <p><code>src/core/tactics/</code>。與地城平行不共用回合邏輯。ToME4 行動值模型：kCtToAct=1000，溢出保留不歸零。單位回合 = 移動一次 + 行動一次。</p>
+        <p><code>projects/core/src/core/tactics/</code>。與地城平行不共用回合邏輯。ToME4 行動值模型：kCtToAct=1000，溢出保留不歸零。單位回合 = 移動一次 + 行動一次。</p>
         <ul style="margin-top:12px;padding-left:18px;color:var(--ink-2);font-size:14px;">
           <li>可達集：四方向 BFS，牆+單位佔格阻擋</li>
           <li>AI：decide_tactics（射程內打最脆，遠程不送頭）</li>
@@ -107,12 +107,14 @@
     <h3 style="margin-top:24px;">建置</h3>
     <div class="term reveal" style="margin-top:8px;">
       <div class="term-bar"><span class="lights"><i class="l-r"></i><i class="l-y"></i><i class="l-g"></i></span> 務必 <code>-j4</code>（無上限 -j 曾吃光 60GiB RAM）</div>
-<div class="term-body"><span class="hl">cmake -S . -B build -DZONE_BUILD_GDEXTENSION=ON</span>
-<span class="hl">cmake --build build --target zone_test -j4</span>
-<span class="wl">./build/bin/zone_test</span>
-<span class="hl">cmake --build build --target zone_gd -j4</span>
-<span class="wl">godot-mono --headless --path godot_zone --import</span>
-<span class="wl">godot-mono --path godot_zone</span></div>
+<div class="term-body"><span class="hl">cmake -S projects/core -B projects/core/build</span>
+<span class="hl">cmake --build projects/core/build -j4</span>
+<span class="hl">cmake -S projects/tests -B projects/tests/build</span>
+<span class="hl">cmake --build projects/tests/build -j4</span>
+<span class="wl">./projects/tests/build/bin/zone_test</span>
+<span class="hl">cmake -S projects/core -B projects/core/build -DZONE_BUILD_GDEXTENSION=ON && cmake --build projects/core/build --target zone_gd -j4</span>
+<span class="wl">godot-mono --headless --path projects/godot_zone --import</span>
+<span class="wl">godot-mono --path projects/godot_zone</span></div>
     </div>
   </section>
 

@@ -8,14 +8,13 @@
 
 | 路徑 | 內容 |
 |------|------|
-| `src/core/` | ECS 核心邏輯，**完全 godot-free、可單元測試**（turn/、tactics/、systems/、serialize/…）；導航見 [CODE_MAP](workflows/common/code-map/CODE_MAP.md) |
-| `src/gbind/` | `ZoneWorld` 橋樑層——**唯一認識 Godot** 的地方 |
-| `tests/` | doctest 測試（`zone_test`）|
-| `godot_zone/` | Godot 4.6 前端專案（`main_menu.tscn`、`verify.gd`…）|
+| `projects/` | 各獨立、平級的子專案（見下三列）|
+| `projects/core/` | C++ 核心專案：`src/core/`（ECS 邏輯，**完全 godot-free、可單元測試**：turn/、tactics/、systems/、serialize/…）、`src/gbind/`（`ZoneWorld`／`TacticsBattle` 橋樑層，**唯一認識 Godot**）、`CMakeLists.txt`、`build/`（產出，不 commit）；導航見 [CODE_MAP](workflows/common/code-map/CODE_MAP.md) |
+| `projects/tests/` | doctest 測試（獨立專案，自行 find/link 已建好的 `zone_core`）；跑法見 [testing](workflows/testing.md) |
+| `projects/godot_zone/` | Godot 4.6 前端專案（`main_menu.tscn`、`verify.gd`…、`bin/` 為 gitignored 編譯產物）|
 | `workflows/` | 開發工作流（入口見 [WORKFLOWS.md](WORKFLOWS.md)）；跨工作流共用在 `workflows/common/` |
 | `docs/` | 給人讀的深入說明（[架構與函數說明](docs/架構與函數說明.md)、進度說明）|
 | `html/` | 由 `.md` 生成的瀏覽導覽站（衍生層，非真相層；工作流 `workflows/html-guide/`）|
-| `build/` | CMake 產出（gitignored）|
 
 ## 工作流
 

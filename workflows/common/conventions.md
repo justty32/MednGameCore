@@ -12,8 +12,8 @@
 
 ## 本專案專屬規則（gamecore-zone）
 
-- **`src/core/` 必須保持 godot-free**：任何 `#include <godot_cpp/...>` 只能出現在 `src/gbind/` 底下的檔案。`src/core/` 的程式碼要能脫離 Godot 單獨編譯、單元測試（`zone_test`）。改 `src/core/` 前若發現有 Godot 依賴混進來，視為需要修正的問題，不要當作既有慣例延續。
-- **新增/刪除可序列化 component 必須同步 `src/core/serialize/all_components.h`**：這是存檔元件的唯一真相來源（`AllComponents` 清單）。漏改會讓新元件存不進存檔，或讓 `load()` 讀到過期結構；改完記得跑一次 `test_serialize.cpp`/`test_phase4.cpp` 確認 round-trip 沒壞。
+- **`projects/core/src/core/` 必須保持 godot-free**：任何 `#include <godot_cpp/...>` 只能出現在 `projects/core/src/gbind/` 底下的檔案。`projects/core/src/core/` 的程式碼要能脫離 Godot 單獨編譯、單元測試（`zone_test`）。改 `projects/core/src/core/` 前若發現有 Godot 依賴混進來，視為需要修正的問題，不要當作既有慣例延續。
+- **新增/刪除可序列化 component 必須同步 `projects/core/src/core/serialize/all_components.h`**：這是存檔元件的唯一真相來源（`AllComponents` 清單）。漏改會讓新元件存不進存檔，或讓 `load()` 讀到過期結構；改完記得跑一次 `test_serialize.cpp`/`test_phase4.cpp` 確認 round-trip 沒壞。
 
 ## CODE_MAP 維護鏈
 
@@ -28,7 +28,7 @@
 優先級：
 
 ```text
-code/tests > CODE_MAP > docs（README、docs/架構與函數說明.md、PROJECT.md）> html/（生成導覽，最低）
+code/tests > CODE_MAP > docs（README、docs/架構與函數說明.md、docs/進度說明.md）> html/（生成導覽，最低）
 ```
 
 規則：

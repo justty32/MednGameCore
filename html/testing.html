@@ -46,11 +46,14 @@
     <h2>① 純 C++ 單元測試</h2>
     <p>不需 Godot。涵蓋地城 TurnEngine/apply_action/decide_npc 與戰棋 ActionBar/可達集/子狀態機/AI。</p>
 
-    <pre data-copy><span class="p">$</span> cmake -S . -B build -D<span class="v">ZONE_BUILD_GDEXTENSION=ON</span>
-<span class="p">$</span> cmake --build build --target zone_test <span class="flag">-j4</span>
-<span class="p">$</span> ./build/bin/zone_test
+    <pre data-copy><span class="c"># 先建核心 zone_core，再建並跑 tests（find/link 已建好的 zone_core）</span>
+<span class="p">$</span> cmake -S projects/core -B projects/core/build
+<span class="p">$</span> cmake --build projects/core/build <span class="flag">-j4</span>
+<span class="p">$</span> cmake -S projects/tests -B projects/tests/build
+<span class="p">$</span> cmake --build projects/tests/build <span class="flag">-j4</span>
+<span class="p">$</span> ./projects/tests/build/bin/zone_test
 <span class="c"># 或</span>
-<span class="p">$</span> ctest --test-dir build --output-on-failure</pre>
+<span class="p">$</span> ctest --test-dir projects/tests/build --output-on-failure</pre>
 
     <p><strong>預期：55 測試案例 / 236 斷言 · 全綠。</strong> 過濾子集：<code>--test-case="*turn_engine*"</code>、<code>--test-case="*tactics*"</code>。</p>
   </section>
@@ -61,13 +64,14 @@
     <h2>② Godot headless 驗證</h2>
     <p>載入原生擴充 <code>libzone_gd.so</code>，驗證 C++ ↔ Godot 整條接線。</p>
 
-    <pre data-copy><span class="p">$</span> cmake --build build --target zone_gd <span class="flag">-j4</span>
+    <pre data-copy><span class="p">$</span> cmake -S projects/core -B projects/core/build -D<span class="v">ZONE_BUILD_GDEXTENSION=ON</span>
+<span class="p">$</span> cmake --build projects/core/build --target zone_gd <span class="flag">-j4</span>
 <span class="c"># 首次需 --import</span>
-<span class="p">$</span> godot-mono --headless --path godot_zone --import
+<span class="p">$</span> godot-mono --headless --path projects/godot_zone --import
 <span class="c"># 地城：BFS 機器人殺向樓梯</span>
-<span class="p">$</span> godot-mono --headless --path godot_zone -s res://verify.gd
+<span class="p">$</span> godot-mono --headless --path projects/godot_zone -s res://verify.gd
 <span class="c"># 戰棋：機器人打完整場</span>
-<span class="p">$</span> godot-mono --headless --path godot_zone -s res://verify_tactics.gd</pre>
+<span class="p">$</span> godot-mono --headless --path projects/godot_zone -s res://verify_tactics.gd</pre>
 
     <p><strong>預期：VERIFY PASSED / TACTICS VERIFY PASSED</strong></p>
 
@@ -80,7 +84,7 @@
   <section>
     <p class="eyebrow">第三層</p>
     <h2>③ 開視窗操作</h2>
-    <pre data-copy><span class="p">$</span> godot-mono --path godot_zone</pre>
+    <pre data-copy><span class="p">$</span> godot-mono --path projects/godot_zone</pre>
     <p>main scene = <code>main_menu.tscn</code>，選地城或戰棋。</p>
 
     <h3>地城按鍵</h3>
@@ -117,10 +121,10 @@
     <table class="tbl reveal">
       <thead><tr><th>層級</th><th>指令</th><th>通過長相</th></tr></thead>
       <tbody>
-        <tr><td>① doctest</td><td><code>cmake --build build --target zone_test -j4 && ./build/bin/zone_test</code></td><td>55/236 全綠</td></tr>
+        <tr><td>① doctest</td><td><code>cmake --build projects/tests/build -j4 && ./projects/tests/build/bin/zone_test</code></td><td>55/236 全綠</td></tr>
         <tr><td>② headless 地城</td><td><code>godot-mono --headless -s res://verify.gd</code></td><td>VERIFY PASSED</td></tr>
         <tr><td>② headless 戰棋</td><td><code>godot-mono --headless -s res://verify_tactics.gd</code></td><td>TACTICS VERIFY PASSED</td></tr>
-        <tr><td>③ 實機</td><td><code>godot-mono --path godot_zone</code></td><td>兩場景可玩完</td></tr>
+        <tr><td>③ 實機</td><td><code>godot-mono --path projects/godot_zone</code></td><td>兩場景可玩完</td></tr>
       </tbody>
     </table>
   </section>

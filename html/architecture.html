@@ -29,20 +29,20 @@
   <div class="page-head">
     <p class="eyebrow">程式結構</p>
     <h2>三層架構與分層鐵律</h2>
-    <p class="lead">唯一鐵律：<strong><code>src/core/</code> 完全 godot-free</strong>，<code>src/gbind/</code> 是唯一認識 Godot 的橋樑層。<code>#include &lt;godot_cpp/…&gt;</code> 只能出現在 gbind。</p>
+    <p class="lead">唯一鐵律：<strong><code>projects/core/src/core/</code> 完全 godot-free</strong>，<code>projects/core/src/gbind/</code> 是唯一認識 Godot 的橋樑層。<code>#include &lt;godot_cpp/…&gt;</code> 只能出現在 gbind。</p>
   </div>
 
   <!-- 分層示意 -->
   <section>
     <div class="term reveal">
       <div class="term-bar"><span class="lights"><i class="l-r"></i><i class="l-y"></i><i class="l-g"></i></span> 依賴方向：只能由上往下</div>
-<div class="term-body">  <span class="hl">godot_zone/</span>   GDScript · 場景/輸入/畫面
+<div class="term-body">  <span class="hl">projects/godot_zone/</span>      GDScript · 場景/輸入/畫面
         │
         ▼
-  <span class="at">src/gbind/</span>    唯一認識 Godot（ZoneWorld / TacticsBattle）
+  <span class="at">projects/core/src/gbind/</span>  唯一認識 Godot（ZoneWorld / TacticsBattle）
         │  ← #include &lt;godot_cpp/…&gt; 只到這裡
         ▼
-  <span class="hl">src/core/</span>    純 C++ / EnTT · 完全 godot-free · 可單元測試</div>
+  <span class="hl">projects/core/src/core/</span>   純 C++ / EnTT · 完全 godot-free · 可單元測試</div>
     </div>
 
     <div class="note bug">
@@ -60,12 +60,12 @@
       <div class="card fire reveal">
         <div class="ico">⌘</div>
         <h3>地城探索</h3>
-        <p><code>src/core/turn/</code> — TurnEngine，最傳統回合制：actor list 依加入序、撞擊即攻擊、下第 5 層通關。橋樑：<code>ZoneWorld</code>。</p>
+        <p><code>projects/core/src/core/turn/</code> — TurnEngine，最傳統回合制：actor list 依加入序、撞擊即攻擊、下第 5 層通關。橋樑：<code>ZoneWorld</code>。</p>
       </div>
       <div class="card cyan reveal">
         <div class="ico">◈</div>
         <h3>戰棋戰鬥</h3>
-        <p><code>src/core/tactics/</code> — ActionBar/Battle，ToME4 行動值模型：kCtToAct=1000，溢出保留。橋樑：<code>TacticsBattle</code>。</p>
+        <p><code>projects/core/src/core/tactics/</code> — ActionBar/Battle，ToME4 行動值模型：kCtToAct=1000，溢出保留。橋樑：<code>TacticsBattle</code>。</p>
       </div>
     </div>
   </section>
@@ -74,7 +74,7 @@
   <section>
     <p class="eyebrow">檔案地圖</p>
     <div class="tree reveal">
-<span class="d">src/core/</span>                  <span class="cmt"># 純 C++ 核心，godot-free</span>
+<span class="d">projects/core/src/core/</span>  <span class="cmt"># 純 C++ 核心，godot-free</span>
 ├─ <span class="hot">turn/</span>                  <span class="cmt"># ★ 地城回合引擎</span>
 │  ├─ <span class="f">turn_engine.{h,cpp}</span>   <span class="cmt"># actor list，begin_round/step/submit</span>
 │  ├─ <span class="f">action.h</span>             <span class="cmt"># Action{Idle,Move,Wait}，無獨立攻擊</span>
@@ -92,19 +92,19 @@
 ├─ <span class="d">maps/</span>                  <span class="cmt"># BSP dungeon gen + MapData</span>
 └─ <span class="d">serialize/</span>             <span class="cmt"># all_components.h = 存檔唯一真相</span>
 
-<span class="d">src/gbind/</span>                <span class="cmt"># GDExtension 橋樑（唯一認識 Godot）</span>
+<span class="d">projects/core/src/gbind/</span>  <span class="cmt"># GDExtension 橋樑（唯一認識 Godot）</span>
 ├─ <span class="f">zone_world_gd.*</span>         <span class="cmt"># ZoneWorld：地城橋樑</span>
 ├─ <span class="f">tactics_battle_gd.*</span>     <span class="cmt"># TacticsBattle：戰棋橋樑（平行互不依賴）</span>
 └─ <span class="f">register_types.cpp</span>
 
-<span class="d">godot_zone/</span>               <span class="cmt"># Godot 專案（GDScript 前端）</span>
+<span class="d">projects/godot_zone/</span>  <span class="cmt"># Godot 專案（GDScript 前端）</span>
 ├─ <span class="hot">main_menu.{tscn,gd}</span>     <span class="cmt"># ★ main scene</span>
 ├─ <span class="f">map_view.* + dungeon_view.gd</span> <span class="cmt"># 地城輸入/HUD + 繪製</span>
 ├─ <span class="f">tactics_view.* + arena_view.gd</span> <span class="cmt"># 戰棋操作 + 繪製</span>
 ├─ <span class="f">tile_atlas.gd</span>         <span class="cmt"># 兩場景共用圖塊座標（唯一真相）</span>
 └─ <span class="f">verify.gd / verify_tactics.gd</span>
 
-<span class="d">tests/src/</span>               <span class="cmt"># doctest（55 case / 236 assertion）</span>
+<span class="d">projects/tests/src/</span>  <span class="cmt"># doctest（55 case / 236 assertion）</span>
     </div>
   </section>
 

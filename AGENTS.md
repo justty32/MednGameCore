@@ -6,13 +6,13 @@
 
 - 專案一句話：C++（EnTT ECS）核心 + Godot 4.6（GDExtension, mono）前端的最傳統回合制地城 roguelike 原型；World/Region/Area 三層架構中的 Area（區域）層。
 - 主要語言/框架：C++17（EnTT ECS、doctest、cereal）＋ Godot 4.6 GDExtension（godot-cpp, mono）。
-- 主要 build 指令：`cmake -S . -B build -DZONE_BUILD_GDEXTENSION=ON` 後 `cmake --build build --target zone_test -j4`（核心測試）／`--target zone_gd -j4`（GDExtension）。
-- 主要 test 指令：`./build/zone_test`（doctest，29 case/93 assertion）或 `ctest --test-dir build`；端到端 `godot-mono --headless --path godot_zone -s res://verify.gd` → VERIFY PASSED。
+- 主要 build 指令（兩個獨立 C++ 專案，先核心後測試）：`cmake -S projects/core -B projects/core/build && cmake --build projects/core/build -j4` 然後 `cmake -S projects/tests -B projects/tests/build && cmake --build projects/tests/build -j4`。GDExtension：`cmake -S projects/core -B projects/core/build -DZONE_BUILD_GDEXTENSION=ON` 後 `cmake --build projects/core/build --target zone_gd -j4`。
+- 主要 test 指令：`./projects/tests/build/bin/zone_test`（doctest，55 case/236 assertion）或 `ctest --test-dir projects/tests/build`；端到端 `godot-mono --headless --path projects/godot_zone -s res://verify.gd` → VERIFY PASSED。
 
 ## 先讀哪裡
 
 - 使用者要你動手做某件事 → [WORKFLOWS.md](WORKFLOWS.md)：依意圖派發到對應工作流。
-- 想看 repo 頂層結構 → [INDEX.md](INDEX.md)：頂層目錄地圖；深入現況與架構 → [README.md](README.md)、[PROJECT.md](PROJECT.md)、[docs/架構與函數說明.md](docs/架構與函數說明.md)。
+- 想看 repo 頂層結構 → [INDEX.md](INDEX.md)：頂層目錄地圖；深入現況與架構 → [README.md](README.md)、[docs/進度說明.md](docs/進度說明.md)、[docs/架構與函數說明.md](docs/架構與函數說明.md)。
 - 碰原始碼 → 先讀 [workflows/common/conventions.md](workflows/common/conventions.md)，再讀 [CODE_MAP](workflows/common/code-map/CODE_MAP.md)。
 
 ## Always-on 鐵律
@@ -44,7 +44,7 @@ AGENTS.md → WORKFLOWS.md / INDEX.md → 各工作流入口 → 工作流內容
 
 ## 本地專案規則
 
-- **分層鐵律**：`src/core/` 完全 godot-free、可單元測試；`src/gbind/`（`ZoneWorld`）是唯一認識 Godot 的橋樑層。核心邏輯不得 include 任何 Godot header。
+- **分層鐵律**：`projects/core/src/core/` 完全 godot-free、可單元測試；`projects/core/src/gbind/`（`ZoneWorld`）是唯一認識 Godot 的橋樑層。核心邏輯不得 include 任何 Godot header。
 - commit 訊息慣例：conventional commits + 中文描述（`refactor(turn): …`、`feat(godot): …`，見 git log）。
-- 生成檔/二進位不 commit：`build/`、`godot_zone/bin/`、`.godot/`、`user://` 皆已 gitignore。
-- 外部依賴：godot-cpp 在 repo 外 `../../projects/godot-cpp`（可用 `-DGODOT_CPP_DIR` 覆寫）；`ZONE_BUILD_GDEXTENSION` 預設 OFF，要建 GDExtension 才開。
+- 生成檔/二進位不 commit：`projects/*/build/`、`projects/godot_zone/bin/`、`.godot/`、`user://` 皆已 gitignore。
+- 外部依賴：godot-cpp 在 repo 外（預設相對 `projects/core/` 為 `../../../../projects/godot-cpp`，即 repo 根往上兩層的 `projects/godot-cpp`；可用 `-DGODOT_CPP_DIR` 覆寫為絕對路徑）；`ZONE_BUILD_GDEXTENSION` 預設 OFF，要建 GDExtension 才開。
